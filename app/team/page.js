@@ -69,6 +69,7 @@ export default function TeamPage() {
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [progressLogs, setProgressLogs] = useState([]);
   const [teamAssignments, setTeamAssignments] = useState([]);
+  const [myProjects, setMyProjects] = useState([]);
 
   const [teamSearch, setTeamSearch] = useState('');
   const [addSearch, setAddSearch] = useState('');
@@ -95,12 +96,13 @@ export default function TeamPage() {
   const fetchData = useCallback(async (mid) => {
     if (!mid) return;
     try {
-      const [staffRes, projectsRes, attendRes, progressRes, assignmentsRes] = await Promise.all([
+      const [staffRes, projectsRes, attendRes, progressRes, assignmentsRes, myProjectsRes] = await Promise.all([
         axios.get(`${backendBaseUrl}/api/v1/users`).catch(() => ({ data: { data: [] } })),
         axios.get(`${backendBaseUrl}/api/v1/projects`).catch(() => ({ data: { data: [] } })),
         axios.get(`${backendBaseUrl}/api/v1/manager/${mid}/attendance-logs`).catch(() => ({ data: { data: [] } })),
         axios.get(`${backendBaseUrl}/api/v1/manager/${mid}/progress-logs`).catch(() => ({ data: { data: [] } })),
         axios.get(`${backendBaseUrl}/api/v1/manager/${mid}/team-assignments`).catch(() => ({ data: { data: [] } })),
+        axios.get(`${backendBaseUrl}/api/v1/manager/${mid}/my-projects`).catch(() => ({ data: { data: [] } })),
       ]);
       // Multi-role aware: include users who have 'staff' in their user_roles array OR as their primary user_role
       const all = (staffRes.data.data || []).filter((u) => {
@@ -114,6 +116,7 @@ export default function TeamPage() {
       setAttendanceLogs(attendRes.data.data || []);
       setProgressLogs(progressRes.data.data || []);
       setTeamAssignments(assignmentsRes.data.data || []);
+      setMyProjects(myProjectsRes.data.data || []);
     } catch (err) {
       console.error('Team fetch error:', err);
     } finally {
@@ -185,6 +188,24 @@ export default function TeamPage() {
       <div>
         <h1 className="mt-2 text-4xl font-semibold text-slate-950">Team Management</h1>
         <p className="mt-1 text-sm text-slate-500">Manage your direct reports and assign staff to projects.</p>
+      </div>
+
+      {/* Projects this manager/AM is in charge of, as assigned by HR */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">You Are In Charge Of</p>
+        {myProjects.length === 0 ? (
+          <p className="text-sm text-slate-400 italic">No projects assigned to you yet. Contact HR to be assigned as manager or account manager on a project.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {myProjects.map((p) => (
+              <span key={p.project_code}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#E8EEFF] px-3 py-1.5 text-xs font-semibold text-[#1540A8]">
+                {p.project_code} — {p.project_name}
+                <span className="opacity-60">· {p.my_role === 'account_manager' ? 'AM' : 'Manager'}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Top row: Current Members + Assign Staff */}
