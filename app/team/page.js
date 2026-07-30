@@ -195,11 +195,11 @@ export default function TeamPage() {
       {/* Projects this manager/AM is in charge of, as assigned by HR */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">You Are In Charge Of</p>
-        {myProjects.length === 0 ? (
+        {myProjects.filter((p) => (p.status || 'ACTIVE').toUpperCase() !== 'INACTIVE').length === 0 ? (
           <p className="text-sm text-slate-400 italic">No projects assigned to you yet. Contact HR to be assigned as manager or account manager on a project.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {myProjects.map((p) => (
+            {myProjects.filter((p) => (p.status || 'ACTIVE').toUpperCase() !== 'INACTIVE').map((p) => (
               <span key={p.project_code}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#E8EEFF] px-3 py-1.5 text-xs font-semibold text-[#1540A8]">
                 {p.project_code} — {p.project_name}

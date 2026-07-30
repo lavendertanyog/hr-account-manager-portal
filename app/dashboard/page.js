@@ -241,7 +241,6 @@ export default function AccountManagerDashboard() {
     { label: 'Pending Allocations', value: loading ? '—' : allocations.length, onClick: () => goToTab('allocations') },
     { label: 'Budget Requests', value: budgetRequests.length, onClick: () => goToTab('budgets') },
     { label: 'Staff Registrations', value: pendingStaff.length, onClick: () => goToTab('staff') },
-    { label: 'Allocations Approved', value: historyLoading ? '—' : history.filter((h) => h.account_manager_status === 'APPROVED').length, onClick: () => goToTab('history') },
   ];
 
   return (
@@ -264,7 +263,7 @@ export default function AccountManagerDashboard() {
       </div>
 
       {/* Stat cards — click to jump to the relevant tab below */}
-      <div className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {stats.map((s) => (
           <button key={s.label} type="button" onClick={s.onClick}
             className="text-left rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm transition hover:shadow-md hover:border-slate-300">

@@ -1,252 +1,542 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import axios from 'axios';
-import Image from 'next/image';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hr-backend-qjww.onrender.com';
+// -- Multi-select dropdown for managers/account_managers ----------------------
+function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
-const ROLE_COLOR = {
-  account_manager: { border: '#7c3aed', text: '#6d28d9', bg: '#f5f3ff' },
-  manager:         { border: '#1a3a8f', text: '#1d4ed8', bg: '#eff6ff' },
-  staff:           { border: '#64748b', text: '#475569', bg: '#f8fafc' },
-};
-const ROLE_LABELS = { account_manager: 'Account Manager', manager: 'Manager', staff: 'Staff' };
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-function initialsOf(name) {
-  return (name || '').split(' ').filter(Boolean).slice(0, 2).map((n) => n[0].toUpperCase()).join('') || '?';
-}
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? users.filter((u) => (u.full_name + ' ' + u.email).toLowerCase().includes(q)) : users;
+  }, [users, search]);
 
-function RolePill({ role }) {
-  const c = ROLE_COLOR[role] || ROLE_COLOR.staff;
+  const toggle = (userId) => {
+    onChange(selected.includes(userId) ? selected.filter((id) => id !== userId) : [...selected, userId]);
+  };
+
+  const selectedUsers = users.filter((u) => selected.includes(u.user_id));
+
   return (
-    <span className="rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
-      style={{ borderColor: c.border, color: c.text, background: c.bg }}>
-      {ROLE_LABELS[role] || role}
-    </span>
-  );
-}
-
-function Avatar({ name, role }) {
-  const c = ROLE_COLOR[role] || ROLE_COLOR.staff;
-  return (
-    <div className="flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0"
-      style={{ width: 34, height: 34, background: c.border }}>
-      {initialsOf(name)}
+    <div className="relative">
+      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
+      {selectedUsers.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selectedUsers.map((u) => (
+            <span key={u.user_id} className="flex items-center gap-1 rounded-full bg-[#E8EEFF] px-3 py-1 text-xs font-semibold text-[#1540A8]">
+              {u.full_name}
+              <button type="button" onClick={() => toggle(u.user_id)} className="ml-0.5 leading-none hover:text-red-500">&times;</button>
+            </span>
+          ))}
+        </div>
+      )}
+      {/* ref only wraps the input + dropdown panel, so clicking the label, chips, or any
+          other whitespace on the page (not just outside the whole field) closes the menu */}
+      <div ref={ref} className="relative">
+        <input
+          type="text"
+          value={search}
+          onFocus={() => setOpen(true)}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          placeholder={placeholder}
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {open && (
+          <div className="absolute z-50 mt-1 max-h-52 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
+            {filtered.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-slate-400">No results</p>
+            ) : filtered.map((u) => {
+              const isSelected = selected.includes(u.user_id);
+              return (
+                <button
+                  key={u.user_id}
+                  type="button"
+                  onClick={() => toggle(u.user_id)}
+                  className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-slate-50 ${isSelected ? 'bg-[#E8EEFF]' : ''}`}
+                >
+                  <span className="font-medium text-slate-800">{u.full_name}</span>
+                  <span className="text-xs text-slate-400">{u.email}</span>
+                  {isSelected && <span className="ml-2 text-[#1540A8] font-bold">&#10003;</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-export default function MyProjectsPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+// -- Modal overlay ------------------------------------------------------------
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+          <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">&times;</button>
+        </div>
+        <div className="px-6 py-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export default function ProjectCodesPage() {
   const [projects, setProjects] = useState([]);
+  const [utilisationMap, setUtilisationMap] = useState({});
+  const [managerOnlyUsers, setManagerOnlyUsers] = useState([]);
+  const [accountManagerUsers, setAccountManagerUsers] = useState([]);
+  const [managerUsers, setManagerUsers] = useState([]); // combined, used only for the filter dropdown
   const [loading, setLoading] = useState(true);
-  const [logoMissing, setLogoMissing] = useState(false);
-  const [search, setSearch] = useState('');
-  const [expandedProjects, setExpandedProjects] = useState({});
-  const [roleFilter, setRoleFilter] = useState('all');
+  const [sessionUser, setSessionUser] = useState(null);
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [managerFilter, setManagerFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [projectPage, setProjectPage] = useState(1);
+  const [openMenuCode, setOpenMenuCode] = useState(null);
+  const [reactivatingCode, setReactivatingCode] = useState(null);
+  const menuRef = useRef(null);
+
+  // Modal state
+  const [modal, setModal] = useState(null); // null | 'create' | 'edit'
+  const [editProject, setEditProject] = useState(null);
+
+  // Form state
+  const [formCode, setFormCode] = useState('');
+  const [formName, setFormName] = useState('');
+  const [formHours, setFormHours] = useState('');
+  const [formAccountManagerIds, setFormAccountManagerIds] = useState([]);
+  const [formManagerIds, setFormManagerIds] = useState([]);
+  const [formError, setFormError] = useState('');
+  const [formSubmitting, setFormSubmitting] = useState(false);
+
+  // Delete confirm
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const backendBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hr-backend-qjww.onrender.com';
 
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem('am_portal_user');
-      if (!stored) { router.push('/'); return; }
-      setUser(JSON.parse(stored));
-    } catch { router.push('/'); }
-  }, [router]);
-
-  const fetchProjects = useCallback(async (uid) => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_BASE}/api/v1/account-manager/${uid}/my-projects`);
-      const data = res.data?.data || [];
-      setProjects(data);
-      // Auto-expand all projects initially
-      const exp = {};
-      data.forEach((p) => { exp[p.project_code] = true; });
-      setExpandedProjects(exp);
-    } catch { setProjects([]); }
-    finally { setLoading(false); }
+      const u = JSON.parse(sessionStorage.getItem('am_portal_user') || '{}');
+      if (u?.user_id) setSessionUser(u);
+    } catch {}
   }, []);
 
-  useEffect(() => { if (user?.user_id) fetchProjects(user.user_id); }, [user?.user_id, fetchProjects]);
+  const fetchAll = useCallback(async () => {
+    try {
+      const [projectsRes, utilisationRes, managersRes, amRes] = await Promise.all([
+        axios.get(`${backendBaseUrl}/api/v1/projects`).catch(() => ({ data: { data: [] } })),
+        axios.get(`${backendBaseUrl}/api/v1/projects/utilisation-detail`).catch(() => ({ data: { data: [] } })),
+        axios.get(`${backendBaseUrl}/api/v1/users?role=manager`).catch(() => ({ data: { data: [] } })),
+        axios.get(`${backendBaseUrl}/api/v1/users?role=account_manager`).catch(() => ({ data: { data: [] } })),
+      ]);
+      setProjects(projectsRes.data.data || []);
+      const utilMap = {};
+      (utilisationRes.data.data || []).forEach((u) => { utilMap[u.project_code] = Number(u.weighted_utilisation_pct || 0); });
+      setUtilisationMap(utilMap);
+      setManagerOnlyUsers(managersRes.data.data || []);
+      setAccountManagerUsers(amRes.data.data || []);
+      const combined = [
+        ...(managersRes.data.data || []),
+        ...(amRes.data.data || []),
+      ];
+      const seen = new Set();
+      setManagerUsers(combined.filter((u) => { if (seen.has(u.user_id)) return false; seen.add(u.user_id); return true; }));
+    } catch (err) {
+      console.error('Fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [backendBaseUrl]);
 
-  const stats = useMemo(() => {
-    const allMembers = projects.flatMap((p) => p.members || []);
-    const uniqueIds = new Set(allMembers.map((m) => m.user_id));
-    const managers = new Set(allMembers.filter((m) => m.project_role === 'manager').map((m) => m.user_id));
-    const staff    = new Set(allMembers.filter((m) => m.project_role === 'staff').map((m) => m.user_id));
-    return { projects: projects.length, total: uniqueIds.size, managers: managers.size, staff: staff.size };
-  }, [projects]);
+  useEffect(() => {
+    void fetchAll();
+  }, [fetchAll]);
 
-  const filteredProjects = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return projects.filter((p) =>
-      (!q || (p.project_code + ' ' + p.project_name).toLowerCase().includes(q)) &&
-      (p.status || 'ACTIVE').toUpperCase() !== 'INACTIVE'
-    );
-  }, [projects, search]);
+  useEffect(() => {
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenuCode(null); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-  const displayName = user?.full_name || 'Account Manager';
+  const handleReactivate = async (projectCode) => {
+    setReactivatingCode(projectCode);
+    try {
+      await axios.patch(`${backendBaseUrl}/api/v1/projects/${projectCode}/reactivate`, {
+        editorId: sessionUser?.user_id,
+      });
+      await fetchAll();
+    } catch (err) {
+      console.error('Reactivate failed:', err.response?.data?.error || err.message);
+    } finally {
+      setReactivatingCode(null);
+      setOpenMenuCode(null);
+    }
+  };
 
-  if (loading) return <div className="p-8 text-sm text-slate-400">Loading your projects…</div>;
+  const openCreate = () => {
+    setFormCode(''); setFormName(''); setFormHours(''); setFormAccountManagerIds([]); setFormManagerIds([]); setFormError('');
+    setDeleteConfirm(false);
+    setModal('create');
+  };
+
+  const openEdit = (project) => {
+    setEditProject(project);
+    setFormCode(project.project_code || '');
+    setFormName(project.project_name || '');
+    setFormHours(project.budget_hours != null ? String(project.budget_hours) : '');
+    setFormAccountManagerIds(Array.isArray(project.account_manager_ids) && project.account_manager_ids.length > 0
+      ? project.account_manager_ids
+      : [project.account_manager_id].filter(Boolean));
+    setFormManagerIds(Array.isArray(project.manager_ids) ? project.manager_ids : []);
+    setFormError('');
+    setDeleteConfirm(false);
+    setModal('edit');
+  };
+
+  const closeModal = () => { setModal(null); setEditProject(null); setDeleteConfirm(false); };
+
+  const handleCreate = async (e) => {
+    e.preventDefault(); setFormError('');
+    if (!formCode.trim() || !formName.trim() || !formHours || formAccountManagerIds.length === 0 || formManagerIds.length === 0) {
+      setFormError('All fields are required: Project Code, Project Name, Budget Hours, at least one Account Manager, and at least one Manager.');
+      return;
+    }
+    setFormSubmitting(true);
+    try {
+      await axios.post(`${backendBaseUrl}/api/v1/projects/create`, {
+        creatorId: sessionUser?.user_id,
+        projectCode: formCode.trim().toUpperCase(),
+        projectName: formName.trim(),
+        budgetHours: formHours ? Number(formHours) : null,
+        accountManagerIds: formAccountManagerIds,
+        managerIds: formManagerIds,
+      });
+      closeModal();
+      await fetchAll();
+    } catch (err) {
+      setFormError(err.response?.data?.error || 'Failed to create project.');
+    } finally { setFormSubmitting(false); }
+  };
+
+  const handleEdit = async (e) => {
+    e.preventDefault(); setFormError('');
+    if (!formName.trim()) { setFormError('Project Name is required.'); return; }
+    setFormSubmitting(true);
+    try {
+      await axios.patch(`${backendBaseUrl}/api/v1/projects/${editProject.project_code}`, {
+        projectName: formName.trim(),
+        budgetHours: formHours ? Number(formHours) : null,
+        accountManagerIds: formAccountManagerIds,
+        managerIds: formManagerIds,
+        editorId: sessionUser?.user_id,
+      });
+      closeModal();
+      await fetchAll();
+    } catch (err) {
+      setFormError(err.response?.data?.error || 'Failed to update project.');
+    } finally { setFormSubmitting(false); }
+  };
+
+  const handleDeactivate = async () => {
+    setDeleteLoading(true); setFormError('');
+    try {
+      await axios.patch(`${backendBaseUrl}/api/v1/projects/${editProject.project_code}/deactivate`, {
+        editorId: sessionUser?.user_id,
+      });
+      closeModal();
+      await fetchAll();
+    } catch (err) {
+      setFormError(err.response?.data?.error || 'Failed to deactivate project.');
+    } finally { setDeleteLoading(false); setDeleteConfirm(false); }
+  };
+
+  const formFields = (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Project Code <span className="text-red-500">*</span></label>
+        <input
+          type="text"
+          value={formCode}
+          onChange={(e) => setFormCode(e.target.value)}
+          placeholder="e.g. PROJ-001"
+          disabled={modal === 'edit'}
+          required
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Project Name <span className="text-red-500">*</span></label>
+        <input
+          type="text"
+          value={formName}
+          onChange={(e) => setFormName(e.target.value)}
+          placeholder="e.g. Website Redesign"
+          required
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Budget Hours <span className="text-red-500">*</span></label>
+        <input
+          type="number"
+          min="0"
+          value={formHours}
+          onChange={(e) => setFormHours(e.target.value)}
+          placeholder="e.g. 200"
+          required
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <UserMultiSelect
+        label={<>Account Manager <span className="text-red-500">*</span></>}
+        placeholder="Search by name or email..."
+        users={accountManagerUsers}
+        selected={formAccountManagerIds}
+        onChange={setFormAccountManagerIds}
+      />
+      <UserMultiSelect
+        label={<>Manager <span className="text-red-500">*</span></>}
+        placeholder="Search by name or email..."
+        users={managerOnlyUsers}
+        selected={formManagerIds}
+        onChange={setFormManagerIds}
+      />
+      {formError && <p className="text-sm font-medium text-red-500">{formError}</p>}
+    </div>
+  );
 
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="mb-7 flex items-start justify-between">
-        <div>
-          <p className="text-sm uppercase tracking-[0.32em] text-slate-500">Account Manager Dashboard</p>
-          <h1 className="mt-3 text-4xl font-semibold text-slate-950">Projects</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Overview of all projects you manage, including team composition and project roles.
-          </p>
-        </div>
-        <div className="hidden md:block">
-          {!logoMissing ? (
-            <Image src="/nextan-logo.png" alt="Nextan" width={140} height={46} className="h-auto w-full max-w-[140px] object-contain" priority onError={() => setLogoMissing(true)} />
-          ) : null}
-        </div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-semibold text-slate-950">Projects</h1>
+        <p className="mt-1 text-sm text-slate-500">Create, edit and manage all project codes.</p>
       </div>
 
-      {/* Stats */}
-      <div className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          { label: 'Projects',  value: stats.projects, color: 'text-purple-700' },
-          { label: 'Total Members', value: stats.total,    color: 'text-slate-800'  },
-          { label: 'Managers',  value: stats.managers, color: 'text-blue-700'   },
-          { label: 'Staff',     value: stats.staff,    color: 'text-slate-600'  },
-        ].map((s) => (
-          <div key={s.label} className="rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{s.label}</p>
-            <p className={`mt-3 text-4xl font-semibold ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
+      {/* Unified toolbar: search · status filter · manager filter … + Issue New Code */}
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search projects…"
-          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <div className="flex gap-1.5">
-          {['all', 'manager', 'staff'].map((r) => (
-            <button key={r} onClick={() => setRoleFilter(r)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold border transition ${roleFilter === r ? 'bg-[#1a3a8f] text-white border-[#1a3a8f]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-              {r === 'all' ? 'All roles' : ROLE_LABELS[r]}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => fetchProjects(user?.user_id)}
-          className="ml-auto rounded-xl border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
-          ↻ Refresh
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search code or project name..."
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+        />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="ALL">Status: All</option>
+          <option value="ACTIVE">Status: Active</option>
+          <option value="INACTIVE">Status: Inactive</option>
+        </select>
+        <select value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="ALL">Filter by Manager</option>
+          {managerUsers.map((u) => <option key={u.user_id} value={u.user_id}>{u.full_name}</option>)}
+        </select>
+        <button
+          onClick={openCreate}
+          className="ml-auto rounded-3xl bg-[#1540A8] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#12378F]"
+        >
+          + Issue New Code
         </button>
       </div>
 
-      {/* Project cards */}
-      {filteredProjects.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white">
-          <p className="text-sm text-gray-400 text-center py-12">No projects found.</p>
-        </div>
-      ) : (
-        <div className="space-y-5">
-          {filteredProjects.map((p) => {
-            const expanded = !!expandedProjects[p.project_code];
-            const members = (p.members || []).filter((m) => roleFilter === 'all' || m.project_role === roleFilter);
-            const byRole = {
-              manager: members.filter((m) => m.project_role === 'manager'),
-              staff:   members.filter((m) => m.project_role === 'staff'),
-              other:   members.filter((m) => !['manager', 'staff'].includes(m.project_role)),
-            };
-
-            return (
-              <div key={p.project_code} className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                {/* Project header */}
-                <button type="button" onClick={() => setExpandedProjects((prev) => ({ ...prev, [p.project_code]: !prev[p.project_code] }))}
-                  className="w-full flex items-center justify-between px-6 py-5 border-b border-slate-100 hover:bg-slate-50 transition text-left"
-                  style={{ background: '#f0f4ff' }}>
-                  <div className="flex items-center gap-4">
-                    <div className="rounded-xl px-3 py-1.5 text-sm font-bold text-white" style={{ background: '#1a3a8f' }}>
-                      {p.project_code}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900">{p.project_name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{p.budget_hours} hrs budget · {(p.members || []).length} members</p>
-                    </div>
-                  </div>
-                  <span className="text-slate-400 text-sm">{expanded ? '▲' : '▼'}</span>
-                </button>
-
-                {/* Team members grouped by project role */}
-                {expanded && (
-                  <div className="p-6 space-y-6">
-                    {byRole.manager.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">
-                          Managers ({byRole.manager.length})
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {byRole.manager.map((m) => (
-                            <div key={m.user_id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 hover:shadow-sm transition">
-                              <Avatar name={m.full_name} role="manager" />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-slate-900 truncate">{m.full_name}</p>
-                                <p className="text-xs text-slate-400 truncate">{m.email}</p>
-                              </div>
-                              <RolePill role={m.project_role || 'staff'} />
+      {/* Projects Table */}
+      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-[0.22em] text-[0.70rem]">
+            <tr>
+              <th className="px-6 py-4">Code ID</th>
+              <th className="px-6 py-4">Project Name</th>
+              <th className="px-6 py-4">Hours</th>
+              <th className="px-6 py-4">Utilization</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4">Manager</th>
+              <th className="px-6 py-4">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100" ref={menuRef}>
+            {loading ? (
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-500">Loading project codes...</td></tr>
+            ) : (() => {
+              const filtered = projects.filter((p) => {
+                const statusOk = statusFilter === 'ALL' || (p.status || 'ACTIVE').toUpperCase() === statusFilter;
+                const q = searchQuery.trim().toLowerCase();
+                const searchOk = !q || (p.project_code || '').toLowerCase().includes(q) || (p.project_name || '').toLowerCase().includes(q);
+                const managerOk = managerFilter === 'ALL'
+                  || p.account_manager_id === managerFilter
+                  || (Array.isArray(p.account_manager_ids) && p.account_manager_ids.includes(managerFilter))
+                  || (Array.isArray(p.manager_ids) && p.manager_ids.includes(managerFilter));
+                return statusOk && searchOk && managerOk;
+              });
+              if (filtered.length === 0) return <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-500">No project codes found.</td></tr>;
+              const totalPages = Math.max(1, Math.ceil(filtered.length / 10));
+              const safePage = Math.min(projectPage, totalPages);
+              const page = filtered.slice((safePage - 1) * 10, safePage * 10);
+              return (
+                <>
+                  {page.map((project) => {
+                    const hours = project.budget_hours ?? 0;
+                    const utilization = utilisationMap[project.project_code] != null && !isNaN(Number(utilisationMap[project.project_code])) ? Number(utilisationMap[project.project_code]) : (Number(project.budget_hours) > 0 ? Math.round(((project.total_tracked_hours ?? 0) / Number(project.budget_hours)) * 100) : 0);
+                    const amNames = project.account_manager_names || (project.account_manager_name ? [project.account_manager_name] : []);
+                    const mgrNames = project.manager_names || [];
+                    const isInactive = (project.status || '').toUpperCase() === 'INACTIVE';
+                    return (
+                      <tr key={project.project_code} className="hover:bg-slate-50">
+                        <td className="px-6 py-4 font-semibold text-slate-900">{project.project_code}</td>
+                        <td className="px-6 py-4 text-slate-700">{project.project_name}</td>
+                        <td className="px-6 py-4 text-slate-700">{hours} hrs</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-2 rounded-full bg-slate-200 overflow-hidden">
+                              <div className="h-full bg-[#163EAF]" style={{ width: `${Math.min(Math.max(utilization, 0), 100)}%` }} />
                             </div>
-                          ))}
+                            <span className="text-xs text-slate-500">{utilization}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            isInactive ? 'bg-red-100 text-red-700' : 'bg-[#E8EEFF] text-[#163EAF]'
+                          }`}>
+                            {project.status ?? 'Active'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-slate-700 max-w-[220px]">
+                          <p className="truncate"><span className="text-slate-400">AM:</span> {amNames.length > 0 ? amNames.join(', ') : '—'}</p>
+                          <p className="truncate"><span className="text-slate-400">Mgr:</span> {mgrNames.length > 0 ? mgrNames.join(', ') : '—'}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="relative inline-block">
+                            <button type="button"
+                              onClick={() => setOpenMenuCode(openMenuCode === project.project_code ? null : project.project_code)}
+                              className="flex items-center justify-center rounded-xl border border-slate-200 w-8 h-8 text-slate-500 hover:bg-slate-100 transition">
+                              &#8230;
+                            </button>
+                            {openMenuCode === project.project_code && (
+                              <div className="absolute right-0 z-20 mt-1 w-40 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                                <button type="button" onClick={() => { openEdit(project); setOpenMenuCode(null); }}
+                                  className="block w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                                  Edit
+                                </button>
+                                {isInactive && (
+                                  <button type="button" disabled={reactivatingCode === project.project_code}
+                                    onClick={() => handleReactivate(project.project_code)}
+                                    className="block w-full px-4 py-2.5 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60">
+                                    {reactivatingCode === project.project_code ? 'Reactivating…' : 'Reactivate'}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {totalPages > 1 && (
+                    <tr><td colSpan={7} className="px-6 py-3 bg-slate-50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Page {safePage} of {totalPages}</span>
+                        <div className="flex gap-2">
+                          <button onClick={() => setProjectPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+                            className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">Prev</button>
+                          <button onClick={() => setProjectPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+                            className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">Next</button>
                         </div>
                       </div>
-                    )}
+                    </td></tr>
+                  )}
+                </>
+              );
+            })()}
+          </tbody>
+        </table>
+      </div>
 
-                    {byRole.staff.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">
-                          Staff ({byRole.staff.length})
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {byRole.staff.map((m) => (
-                            <div key={m.user_id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 hover:shadow-sm transition">
-                              <Avatar name={m.full_name} role="staff" />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-slate-900 truncate">{m.full_name}</p>
-                                <p className="text-xs text-slate-400 truncate">{m.email}</p>
-                              </div>
-                              <RolePill role={m.project_role || 'staff'} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+      {/* Create Modal */}
+      {modal === 'create' && (
+        <Modal title="Issue New Project Code" onClose={closeModal}>
+          <form onSubmit={handleCreate} className="space-y-4">
+            {formFields}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={closeModal}
+                className="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button type="submit" disabled={formSubmitting}
+                className="rounded-2xl bg-[#1540A8] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#12378F] disabled:opacity-60">
+                {formSubmitting ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
-                    {byRole.other.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">Other</p>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {byRole.other.map((m) => (
-                            <div key={m.user_id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                              <Avatar name={m.full_name} role="staff" />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-slate-900 truncate">{m.full_name}</p>
-                                <p className="text-xs text-slate-400 truncate">{m.email}</p>
-                              </div>
-                              <RolePill role={m.project_role || 'staff'} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+      {/* Edit Modal */}
+      {modal === 'edit' && editProject && (
+        <Modal title={`Edit — ${editProject.project_code}`} onClose={closeModal}>
+          <form onSubmit={handleEdit} className="space-y-4">
+            {formFields}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={closeModal}
+                className="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button type="submit" disabled={formSubmitting}
+                className="rounded-2xl bg-[#1540A8] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#12378F] disabled:opacity-60">
+                {formSubmitting ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
 
-                    {members.length === 0 && (
-                      <p className="text-sm text-slate-400 italic">No members match the selected role filter.</p>
-                    )}
-                  </div>
-                )}
+          {/* Deactivate section */}
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            {!deleteConfirm ? (
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(true)}
+                className="w-full rounded-2xl border border-amber-200 bg-amber-50 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+              >
+                Deactivate Project Code
+              </button>
+            ) : (
+              <div className="rounded-2xl bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-800 mb-1">Deactivate <span className="font-bold">{editProject.project_code}</span>?</p>
+                <p className="text-xs text-amber-700 mb-3">This will remove all staff assignments and set the project to INACTIVE. This cannot be undone from this portal.</p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirm(false)}
+                    className="flex-1 rounded-xl border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeactivate}
+                    disabled={deleteLoading}
+                    className="flex-1 rounded-xl bg-amber-600 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+                  >
+                    {deleteLoading ? 'Deactivating...' : 'Yes, Deactivate'}
+                  </button>
+                </div>
               </div>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );
