@@ -17,7 +17,7 @@ function formatRole(role) {
 
 const NAV = [
   { label: 'Dashboard', href: '/dashboard' },
-  { label: 'My Projects', href: '/my-projects' },
+  { label: 'Projects', href: '/my-projects' },
   { label: 'Team', href: '/team' },
   { label: 'Approvals', href: '/approvals' },
 ];

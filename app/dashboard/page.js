@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
@@ -24,6 +24,16 @@ function StatusPill({ status }) {
   return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${map[status] || 'bg-gray-100 text-gray-600'}`}>{label}</span>;
 }
 
+function EventBadge({ type }) {
+  const map = {
+    ALLOCATION: 'bg-blue-50 text-blue-700',
+    BUDGET: 'bg-purple-50 text-purple-700',
+    STAFF: 'bg-emerald-50 text-emerald-700',
+  };
+  const label = { ALLOCATION: 'Allocation', BUDGET: 'Budget Request', STAFF: 'Staff Registration' }[type] || type;
+  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${map[type] || 'bg-gray-100 text-gray-600'}`}>{label}</span>;
+}
+
 export default function AccountManagerDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -35,10 +45,11 @@ export default function AccountManagerDashboard() {
   const [budgetHistory, setBudgetHistory] = useState([]);
   // Staff registrations state
   const [pendingStaff, setPendingStaff] = useState([]);
+  const [staffHistory, setStaffHistory] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
   const [staffFeedback, setStaffFeedback] = useState('');
 
-  const [activeTab, setActiveTab] = useState('allocations'); // 'allocations' | 'budgets' | 'staff'
+  const [activeTab, setActiveTab] = useState('allocations'); // 'allocations' | 'budgets' | 'staff' | 'history'
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,13 +61,18 @@ export default function AccountManagerDashboard() {
   const [processingId, setProcessingId] = useState(null);
   // Budget review modal
   const [budgetModal, setBudgetModal] = useState(null);
-  const [budgetRemarkText, setBudgetRemarkText] = useState('');
   const [budgetProcessingId, setBudgetProcessingId] = useState(null);
 
   // Pagination
   const [pendingPage, setPendingPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [budgetPage, setBudgetPage] = useState(1);
+
+  // History filters
+  const [historyTypeFilter, setHistoryTypeFilter] = useState('ALL'); // ALL | ALLOCATION | BUDGET | STAFF
+  const [historyDateFrom, setHistoryDateFrom] = useState('');
+  const [historyDateTo, setHistoryDateTo] = useState('');
+  const [historySearch, setHistorySearch] = useState('');
 
   useEffect(() => {
     try {
@@ -102,8 +118,12 @@ export default function AccountManagerDashboard() {
     if (!uid) return;
     setStaffLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/v1/account-manager/pending-staff-registrations?requesterId=${uid}`);
-      setPendingStaff(res.data?.data || []);
+      const [pendingRes, histRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/v1/account-manager/pending-staff-registrations?requesterId=${uid}`).catch(() => null),
+        axios.get(`${API_BASE}/api/v1/account-manager/staff-registration-history?requesterId=${uid}`).catch(() => null),
+      ]);
+      setPendingStaff(pendingRes?.data?.data || []);
+      setStaffHistory(histRes?.data?.data || []);
     } catch { setPendingStaff([]); }
     finally { setStaffLoading(false); }
   };
@@ -116,10 +136,6 @@ export default function AccountManagerDashboard() {
       void fetchPendingStaff(user.user_id);
     }
   }, [user?.user_id]);
-
-  const pendingCount = useMemo(() => allocations.length, [allocations]);
-  const approvedCount = useMemo(() => history.filter((h) => h.account_manager_status === 'APPROVED').length, [history]);
-  const rejectedCount = useMemo(() => history.filter((h) => h.account_manager_status === 'REJECTED').length, [history]);
 
   const openRemarkModal = (allocationId, action) => {
     setRemarkModal({ allocationId, action });
@@ -172,6 +188,62 @@ export default function AccountManagerDashboard() {
 
   const displayName = user?.full_name || (user?.email ? user.email.split('@')[0].split('.').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'Account Manager');
 
+  // ─── Unified History rows across allocations / budget / staff registrations ───
+  const combinedHistory = useMemo(() => {
+    const allocRows = history.map((item) => ({
+      type: 'ALLOCATION',
+      key: `alloc-${item.allocation_id}`,
+      description: `Allocation of ${formatHours(item.hours_per_week)} hrs/week requested`,
+      target: item.project_code,
+      actor: item.manager_name || item.manager_email || item.staff_name || '—',
+      status: item.account_manager_status === 'APPROVED' ? 'APPROVED' : 'REJECTED',
+      date: item.account_manager_reviewed_at || item.created_at,
+    }));
+    const budgetRows = budgetHistory.map((item) => ({
+      type: 'BUDGET',
+      key: `budget-${item.request_id}`,
+      description: `Budget requested: ${formatHours(item.requested_hours)} hrs for ${item.project_name || item.project_code}`,
+      target: item.project_code,
+      actor: item.requester_name || item.requester_email || '—',
+      status: item.status === 'APPROVED' ? 'APPROVED' : item.status === 'REJECTED' ? 'REJECTED' : item.status,
+      date: item.reviewed_at || item.created_at,
+    }));
+    const staffRows = staffHistory.map((item) => ({
+      type: 'STAFF',
+      key: `staff-${item.user_id}`,
+      description: `Staff registered: ${item.full_name}`,
+      target: '—',
+      actor: item.full_name,
+      status: item.account_status === 'active' ? 'APPROVED' : 'REJECTED',
+      date: item.created_at,
+    }));
+    return [...allocRows, ...budgetRows, ...staffRows].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [history, budgetHistory, staffHistory]);
+
+  const filteredHistory = combinedHistory.filter((row) => {
+    if (historyTypeFilter !== 'ALL' && row.type !== historyTypeFilter) return false;
+    if (historyDateFrom && new Date(row.date) < new Date(historyDateFrom)) return false;
+    if (historyDateTo) {
+      const end = new Date(historyDateTo); end.setHours(23, 59, 59, 999);
+      if (new Date(row.date) > end) return false;
+    }
+    const q = historySearch.trim().toLowerCase();
+    if (q && !String(row.actor || '').toLowerCase().includes(q) && !String(row.target || '').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const goToTab = (tab) => {
+    setActiveTab(tab);
+    document.getElementById('am-approvals-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const stats = [
+    { label: 'Pending Allocations', value: loading ? '—' : allocations.length, onClick: () => goToTab('allocations') },
+    { label: 'Budget Requests', value: budgetRequests.length, onClick: () => goToTab('budgets') },
+    { label: 'Staff Registrations', value: pendingStaff.length, onClick: () => goToTab('staff') },
+    { label: 'Allocations Approved', value: historyLoading ? '—' : history.filter((h) => h.account_manager_status === 'APPROVED').length, onClick: () => goToTab('history') },
+  ];
+
   return (
     <div className="p-8">
       {/* Page header */}
@@ -191,24 +263,15 @@ export default function AccountManagerDashboard() {
         </div>
       </div>
 
-      {/* Stat cards */}
+      {/* Stat cards — click to jump to the relevant tab below */}
       <div className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Pending Allocations</p>
-          <p className="mt-3 text-4xl font-semibold text-slate-900">{loading ? '—' : allocations.length}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Budget Requests</p>
-          <p className="mt-3 text-4xl font-semibold text-slate-900">{budgetRequests.length}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Staff Registrations</p>
-          <p className="mt-3 text-4xl font-semibold text-slate-900">{pendingStaff.length}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Allocations Approved</p>
-          <p className="mt-3 text-4xl font-semibold text-slate-900">{historyLoading ? '—' : history.filter((h) => h.account_manager_status === 'APPROVED').length}</p>
-        </div>
+        {stats.map((s) => (
+          <button key={s.label} type="button" onClick={s.onClick}
+            className="text-left rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm transition hover:shadow-md hover:border-slate-300">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">{s.label}</p>
+            <p className="mt-3 text-4xl font-semibold text-slate-900">{s.value}</p>
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -216,7 +279,7 @@ export default function AccountManagerDashboard() {
       )}
 
       {/* Tabs + tables */}
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+      <div id="am-approvals-panel" className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden scroll-mt-6">
         <div className="flex gap-1 border-b border-gray-100 px-4 pt-4">
           <button onClick={() => setActiveTab('allocations')}
             className={`rounded-t-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === 'allocations' ? 'bg-[#e8edf8] text-[#1a3a8f]' : 'text-slate-500 hover:text-slate-700'}`}>
@@ -232,154 +295,162 @@ export default function AccountManagerDashboard() {
           </button>
           <button onClick={() => setActiveTab('history')}
             className={`rounded-t-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === 'history' ? 'bg-[#e8edf8] text-[#1a3a8f]' : 'text-slate-500 hover:text-slate-700'}`}>
-            Allocation History
+            History
           </button>
         </div>
 
         {activeTab === 'allocations' ? (
-          <div className="overflow-x-auto">
+          <div>
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
               <h2 className="text-sm font-bold text-slate-900">Allocation requests</h2>
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1540A8]">Live data</span>
             </div>
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                <tr>
-                  <th className="px-6 py-4">Requested By</th>
-                  <th className="px-6 py-4">Project</th>
-                  <th className="px-6 py-4">Hours Requested</th>
-                  <th className="px-6 py-4">Hours Assigned</th>
-                  <th className="px-6 py-4">Reason</th>
-                  <th className="px-6 py-4">Submitted</th>
-                  <th className="px-6 py-4">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {loading ? (
-                  <tr><td colSpan={7} className="px-6 py-8 text-slate-400">Loading...</td></tr>
-                ) : allocations.length === 0 ? (
-                  <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-400">No pending allocation requests.</td></tr>
-                ) : (() => {
-                  const totalPages = Math.max(1, Math.ceil(allocations.length / 10));
-                  const safePage = Math.min(pendingPage, totalPages);
-                  const page = allocations.slice((safePage - 1) * 10, safePage * 10);
-                  return (
-                    <>
-                      {page.map((item) => (
-                        <tr key={item.allocation_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <p className="font-semibold text-slate-900">{item.staff_name || item.staff_email || 'Staff'}</p>
-                            <p className="text-xs text-slate-400">{item.staff_email || ''}</p>
-                          </td>
-                          <td className="px-6 py-4 font-medium text-slate-700">{item.project_code}</td>
-                          <td className="px-6 py-4 text-slate-700">{formatHours(item.hours_requested ?? item.hours_per_week)}</td>
-                          <td className="px-6 py-4 text-slate-700">{formatHours(item.hours_per_week)}</td>
-                          <td className="px-6 py-4 text-slate-600 max-w-[160px] truncate">{item.reason || item.justification || '—'}</td>
-                          <td className="px-6 py-4 text-xs text-slate-400">
-                            {item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG') : '—'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              <button type="button" disabled={processingId === item.allocation_id}
-                                onClick={() => openRemarkModal(item.allocation_id, 'APPROVED')}
-                                className="rounded-xl bg-[#1a3a8f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#12307a] disabled:opacity-60">
-                                Approve
-                              </button>
-                              <button type="button" disabled={processingId === item.allocation_id}
-                                onClick={() => openRemarkModal(item.allocation_id, 'REJECTED')}
-                                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-gray-100 disabled:opacity-60">
-                                Reject
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {totalPages > 1 && (
-                        <tr><td colSpan={7} className="px-6 py-3 bg-slate-50">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">Page {safePage} of {totalPages}</span>
-                            <div className="flex gap-2">
-                              <button onClick={() => setPendingPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-                                className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Prev</button>
-                              <button onClick={() => setPendingPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                                className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Next</button>
-                            </div>
-                          </div>
-                        </td></tr>
-                      )}
-                    </>
-                  );
-                })()}
-              </tbody>
-            </table>
+            {loading ? (
+              <p className="px-6 py-8 text-slate-400">Loading...</p>
+            ) : allocations.length === 0 ? (
+              <p className="px-6 py-12 text-center text-sm text-gray-400">No pending allocation requests.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <tr>
+                      <th className="px-6 py-4">Requested By</th>
+                      <th className="px-6 py-4">Project</th>
+                      <th className="px-6 py-4">Hours Requested</th>
+                      <th className="px-6 py-4">Hours Assigned</th>
+                      <th className="px-6 py-4">Reason</th>
+                      <th className="px-6 py-4">Submitted</th>
+                      <th className="px-6 py-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {(() => {
+                      const totalPages = Math.max(1, Math.ceil(allocations.length / 10));
+                      const safePage = Math.min(pendingPage, totalPages);
+                      const page = allocations.slice((safePage - 1) * 10, safePage * 10);
+                      return (
+                        <>
+                          {page.map((item) => (
+                            <tr key={item.allocation_id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4">
+                                <p className="font-semibold text-slate-900">{item.staff_name || item.staff_email || 'Staff'}</p>
+                                <p className="text-xs text-slate-400">{item.staff_email || ''}</p>
+                              </td>
+                              <td className="px-6 py-4 font-medium text-slate-700">{item.project_code}</td>
+                              <td className="px-6 py-4 text-slate-700">{formatHours(item.hours_requested ?? item.hours_per_week)}</td>
+                              <td className="px-6 py-4 text-slate-700">{formatHours(item.hours_per_week)}</td>
+                              <td className="px-6 py-4 text-slate-600 max-w-[160px] truncate">{item.reason || item.justification || '—'}</td>
+                              <td className="px-6 py-4 text-xs text-slate-400">
+                                {item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG') : '—'}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex gap-2">
+                                  <button type="button" disabled={processingId === item.allocation_id}
+                                    onClick={() => openRemarkModal(item.allocation_id, 'APPROVED')}
+                                    className="rounded-xl bg-[#1a3a8f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#12307a] disabled:opacity-60">
+                                    Approve
+                                  </button>
+                                  <button type="button" disabled={processingId === item.allocation_id}
+                                    onClick={() => openRemarkModal(item.allocation_id, 'REJECTED')}
+                                    className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-gray-100 disabled:opacity-60">
+                                    Reject
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {totalPages > 1 && (
+                            <tr><td colSpan={7} className="px-6 py-3 bg-slate-50">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500">Page {safePage} of {totalPages}</span>
+                                <div className="flex gap-2">
+                                  <button onClick={() => setPendingPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+                                    className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Prev</button>
+                                  <button onClick={() => setPendingPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+                                    className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Next</button>
+                                </div>
+                              </div>
+                            </td></tr>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         ) : activeTab === 'budgets' ? (
-          <div className="overflow-x-auto">
+          <div>
             <div className="px-6 py-4 border-b border-gray-50">
               <h2 className="text-sm font-bold text-slate-900">Budget requests awaiting final approval</h2>
             </div>
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                <tr>
-                  <th className="px-6 py-4">Requester</th>
-                  <th className="px-6 py-4">Project</th>
-                  <th className="px-6 py-4">Hours</th>
-                  <th className="px-6 py-4">Justification</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Submitted</th>
-                  <th className="px-6 py-4">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {budgetRequests.length === 0 ? (
-                  <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-400">No budget requests pending your approval.</td></tr>
-                ) : (() => {
-                  const totalPages = Math.max(1, Math.ceil(budgetRequests.length / 10));
-                  const safePage = Math.min(budgetPage, totalPages);
-                  const page = budgetRequests.slice((safePage - 1) * 10, safePage * 10);
-                  return (
-                    <>
-                      {page.map((item) => (
-                        <tr key={item.request_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <p className="font-semibold text-slate-900">{item.requester_name || 'Staff'}</p>
-                            <p className="text-xs text-slate-400">{item.requester_email || ''}</p>
-                          </td>
-                          <td className="px-6 py-4 font-medium text-slate-700">{item.project_code}</td>
-                          <td className="px-6 py-4 text-slate-700">{formatHours(item.requested_hours)} hrs</td>
-                          <td className="px-6 py-4 text-slate-600 max-w-[160px] truncate">{item.justification || '—'}</td>
-                          <td className="px-6 py-4"><StatusPill status={item.status} /></td>
-                          <td className="px-6 py-4 text-xs text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG') : '—'}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              <button type="button" disabled={budgetProcessingId === item.request_id}
-                                onClick={() => { setBudgetModal({ requestId: item.request_id, action: 'APPROVED' }); setBudgetRemarkText(''); }}
-                                className="rounded-xl bg-[#1a3a8f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#12307a] disabled:opacity-60">Approve</button>
-                              <button type="button" disabled={budgetProcessingId === item.request_id}
-                                onClick={() => { setBudgetModal({ requestId: item.request_id, action: 'REJECTED' }); setBudgetRemarkText(''); }}
-                                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-gray-100 disabled:opacity-60">Reject</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {totalPages > 1 && (
-                        <tr><td colSpan={7} className="px-6 py-3 bg-slate-50">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">Page {safePage} of {totalPages}</span>
-                            <div className="flex gap-2">
-                              <button onClick={() => setBudgetPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-                                className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Prev</button>
-                              <button onClick={() => setBudgetPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                                className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Next</button>
-                            </div>
-                          </div>
-                        </td></tr>
-                      )}
-                    </>
-                  );
-                })()}
-              </tbody>
-            </table>
+            {budgetRequests.length === 0 ? (
+              <p className="px-6 py-12 text-center text-sm text-gray-400">No budget requests pending your approval.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <tr>
+                      <th className="px-6 py-4">Requester</th>
+                      <th className="px-6 py-4">Project</th>
+                      <th className="px-6 py-4">Hours</th>
+                      <th className="px-6 py-4">Justification</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Submitted</th>
+                      <th className="px-6 py-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {(() => {
+                      const totalPages = Math.max(1, Math.ceil(budgetRequests.length / 10));
+                      const safePage = Math.min(budgetPage, totalPages);
+                      const page = budgetRequests.slice((safePage - 1) * 10, safePage * 10);
+                      return (
+                        <>
+                          {page.map((item) => (
+                            <tr key={item.request_id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4">
+                                <p className="font-semibold text-slate-900">{item.requester_name || 'Staff'}</p>
+                                <p className="text-xs text-slate-400">{item.requester_email || ''}</p>
+                              </td>
+                              <td className="px-6 py-4 font-medium text-slate-700">{item.project_code}</td>
+                              <td className="px-6 py-4 text-slate-700">{formatHours(item.requested_hours)} hrs</td>
+                              <td className="px-6 py-4 text-slate-600 max-w-[160px] truncate">{item.justification || '—'}</td>
+                              <td className="px-6 py-4"><StatusPill status={item.status} /></td>
+                              <td className="px-6 py-4 text-xs text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG') : '—'}</td>
+                              <td className="px-6 py-4">
+                                <div className="flex gap-2">
+                                  <button type="button" disabled={budgetProcessingId === item.request_id}
+                                    onClick={() => setBudgetModal({ requestId: item.request_id, action: 'APPROVED' })}
+                                    className="rounded-xl bg-[#1a3a8f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#12307a] disabled:opacity-60">Approve</button>
+                                  <button type="button" disabled={budgetProcessingId === item.request_id}
+                                    onClick={() => setBudgetModal({ requestId: item.request_id, action: 'REJECTED' })}
+                                    className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-gray-100 disabled:opacity-60">Reject</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {totalPages > 1 && (
+                            <tr><td colSpan={7} className="px-6 py-3 bg-slate-50">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500">Page {safePage} of {totalPages}</span>
+                                <div className="flex gap-2">
+                                  <button onClick={() => setBudgetPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+                                    className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Prev</button>
+                                  <button onClick={() => setBudgetPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+                                    className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Next</button>
+                                </div>
+                              </div>
+                            </td></tr>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         ) : activeTab === 'staff' ? (
           <div className="p-6">
@@ -392,101 +463,121 @@ export default function AccountManagerDashboard() {
             {staffLoading ? (
               <p className="text-sm text-slate-400">Loading...</p>
             ) : pendingStaff.length === 0 ? (
-              <p className="text-sm text-slate-400 py-4">No pending staff registrations.</p>
+              <p className="text-sm text-gray-400 text-center py-12">No pending staff registrations.</p>
             ) : (
-              <table className="min-w-full text-sm">
-                <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  <tr>
-                    <th className="px-6 py-4">Name</th>
-                    <th className="px-6 py-4">Email</th>
-                    <th className="px-6 py-4">Requested</th>
-                    <th className="px-6 py-4">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {pendingStaff.map((u) => (
-                    <tr key={u.user_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-semibold text-slate-900">{u.full_name}</td>
-                      <td className="px-6 py-4 text-slate-600">{u.email}</td>
-                      <td className="px-6 py-4 text-xs text-slate-400">{u.created_at ? new Date(u.created_at).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <button onClick={() => handleStaffApproval(u.user_id, 'approve')}
-                            className="rounded-xl bg-[#1a3a8f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#12307a]">Approve</button>
-                          <button onClick={() => handleStaffApproval(u.user_id, 'reject')}
-                            className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-gray-100">Reject</button>
-                        </div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <tr>
+                      <th className="px-6 py-4">Name</th>
+                      <th className="px-6 py-4">Email</th>
+                      <th className="px-6 py-4">Requested</th>
+                      <th className="px-6 py-4">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {pendingStaff.map((u) => (
+                      <tr key={u.user_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 font-semibold text-slate-900">{u.full_name}</td>
+                        <td className="px-6 py-4 text-slate-600">{u.email}</td>
+                        <td className="px-6 py-4 text-xs text-slate-400">{u.created_at ? new Date(u.created_at).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <button onClick={() => handleStaffApproval(u.user_id, 'approve')}
+                              className="rounded-xl bg-[#1a3a8f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#12307a]">Approve</button>
+                            <button onClick={() => handleStaffApproval(u.user_id, 'reject')}
+                              className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-gray-100">Reject</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div>
             <div className="px-6 py-4 border-b border-gray-50">
-              <h2 className="text-sm font-bold text-slate-900">Reviewed allocations</h2>
+              <h2 className="text-sm font-bold text-slate-900">History</h2>
+              <p className="text-xs text-slate-400 mt-0.5">All reviewed allocations, budget requests, and staff registrations.</p>
             </div>
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                <tr>
-                  <th className="px-6 py-4">Staff</th>
-                  <th className="px-6 py-4">Project</th>
-                  <th className="px-6 py-4">Hours / Week</th>
-                  <th className="px-6 py-4">Manager</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Reviewed</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {historyLoading ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-slate-400">Loading...</td></tr>
-                ) : history.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">No history yet.</td></tr>
-                ) : (() => {
-                  const totalPages = Math.max(1, Math.ceil(history.length / 10));
-                  const safePage = Math.min(historyPage, totalPages);
-                  const page = history.slice((safePage - 1) * 10, safePage * 10);
-                  return (
-                    <>
-                      {page.map((item) => (
-                        <tr key={item.allocation_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <p className="font-semibold text-slate-900">{item.staff_name || item.staff_email || 'Staff'}</p>
-                            <p className="text-xs text-slate-400">{item.staff_email || ''}</p>
-                          </td>
-                          <td className="px-6 py-4 font-medium text-slate-700">{item.project_code}</td>
-                          <td className="px-6 py-4 text-slate-700">{formatHours(item.hours_per_week)}</td>
-                          <td className="px-6 py-4 text-slate-700">{item.manager_name || item.manager_email || '-'}</td>
-                          <td className="px-6 py-4">
-                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              item.account_manager_status === 'APPROVED' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
-                            }`}>{item.account_manager_status === 'APPROVED' ? 'Approved' : 'Rejected'}</span>
-                          </td>
-                          <td className="px-6 py-4 text-xs text-slate-400">
-                            {item.account_manager_reviewed_at ? new Date(item.account_manager_reviewed_at).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                      {totalPages > 1 && (
-                        <tr><td colSpan={6} className="px-6 py-3 bg-slate-50">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">Page {safePage} of {totalPages}</span>
-                            <div className="flex gap-2">
-                              <button onClick={() => setHistoryPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-                                className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Prev</button>
-                              <button onClick={() => setHistoryPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                                className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Next</button>
-                            </div>
-                          </div>
-                        </td></tr>
-                      )}
-                    </>
-                  );
-                })()}
-              </tbody>
-            </table>
+
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-gray-50 bg-gray-50/50">
+              <select value={historyTypeFilter} onChange={(e) => { setHistoryTypeFilter(e.target.value); setHistoryPage(1); }}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <option value="ALL">All Types</option>
+                <option value="ALLOCATION">Allocations</option>
+                <option value="BUDGET">Budget Requests</option>
+                <option value="STAFF">Staff Registrations</option>
+              </select>
+              <input type="date" value={historyDateFrom} onChange={(e) => { setHistoryDateFrom(e.target.value); setHistoryPage(1); }}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <span className="text-xs text-slate-400">to</span>
+              <input type="date" value={historyDateTo} onChange={(e) => { setHistoryDateTo(e.target.value); setHistoryPage(1); }}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <input type="text" value={historySearch} onChange={(e) => { setHistorySearch(e.target.value); setHistoryPage(1); }}
+                placeholder="Search staff, manager, or project…"
+                className="ml-auto rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-slate-900 w-64 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+
+            {historyLoading ? (
+              <p className="px-6 py-8 text-slate-400">Loading...</p>
+            ) : filteredHistory.length === 0 ? (
+              <p className="px-6 py-12 text-center text-sm text-gray-400">No history records match this filter.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <tr>
+                      <th className="px-6 py-4">Event / Type</th>
+                      <th className="px-6 py-4">Description</th>
+                      <th className="px-6 py-4">Target / Project</th>
+                      <th className="px-6 py-4">Actor / Manager</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Date &amp; Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {(() => {
+                      const totalPages = Math.max(1, Math.ceil(filteredHistory.length / 10));
+                      const safePage = Math.min(historyPage, totalPages);
+                      const page = filteredHistory.slice((safePage - 1) * 10, safePage * 10);
+                      return (
+                        <>
+                          {page.map((row) => (
+                            <tr key={row.key} className="hover:bg-gray-50">
+                              <td className="px-6 py-4"><EventBadge type={row.type} /></td>
+                              <td className="px-6 py-4 text-slate-700 max-w-[260px] truncate">{row.description}</td>
+                              <td className="px-6 py-4 font-medium text-slate-700">{row.target}</td>
+                              <td className="px-6 py-4 text-slate-700">{row.actor}</td>
+                              <td className="px-6 py-4"><StatusPill status={row.status} /></td>
+                              <td className="px-6 py-4 text-xs text-slate-400">
+                                {row.date ? new Date(row.date).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                          {totalPages > 1 && (
+                            <tr><td colSpan={6} className="px-6 py-3 bg-slate-50">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-500">Page {safePage} of {totalPages}</span>
+                                <div className="flex gap-2">
+                                  <button onClick={() => setHistoryPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+                                    className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Prev</button>
+                                  <button onClick={() => setHistoryPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+                                    className="rounded-xl border border-gray-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-gray-100">Next</button>
+                                </div>
+                              </div>
+                            </td></tr>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

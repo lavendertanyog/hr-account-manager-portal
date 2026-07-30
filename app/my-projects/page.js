@@ -98,7 +98,7 @@ export default function MyProjectsPage() {
       <div className="mb-7 flex items-start justify-between">
         <div>
           <p className="text-sm uppercase tracking-[0.32em] text-slate-500">Account Manager Dashboard</p>
-          <h1 className="mt-3 text-4xl font-semibold text-slate-950">My Projects</h1>
+          <h1 className="mt-3 text-4xl font-semibold text-slate-950">Projects</h1>
           <p className="mt-2 text-sm text-slate-500">
             Overview of all projects you manage, including team composition and project roles.
           </p>
@@ -145,7 +145,9 @@ export default function MyProjectsPage() {
 
       {/* Project cards */}
       {filteredProjects.length === 0 ? (
-        <p className="text-sm text-slate-400 py-8">No projects found.</p>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <p className="text-sm text-gray-400 text-center py-12">No projects found.</p>
+        </div>
       ) : (
         <div className="space-y-5">
           {filteredProjects.map((p) => {

@@ -171,6 +171,8 @@ export default function TeamPage() {
   };
 
   const handleUnassignProject = async (userId, projectCode) => {
+    const confirmed = window.confirm(`Remove the ${projectCode} project assignment for this staff member?`);
+    if (!confirmed) return;
     setUnassignFeedback('');
     try {
       await axios.delete(`${backendBaseUrl}/api/v1/assignments/remove`, {
@@ -208,7 +210,7 @@ export default function TeamPage() {
         )}
       </div>
 
-      {/* Top row: Current Members + Assign Staff */}
+      {/* Team composition: Current Members + Add Staff, grouped before project allocation workflows */}
       <div className="grid gap-6 lg:grid-cols-2">
 
         {/* Current Members card */}
@@ -252,68 +254,68 @@ export default function TeamPage() {
             )}
         </section>
 
-        {/* Assign Staff to Project */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-950 mb-1">Assign Staff to Project</h2>
-          <p className="text-sm text-slate-500 mb-4">Assign one or more staff members to a project code.</p>
-          <form onSubmit={handleAssignStaff} className="space-y-4">
-            <UserMultiSelect label="Staff Members" placeholder="Search staff by name or email..."
-              users={allStaff} selected={selectedStaffIds} onChange={setSelectedStaffIds} />
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Project Code</label>
-              <select value={assignProjectCode} onChange={(e) => setAssignProjectCode(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Select a project code</option>
-                {projects.filter((p) => (p.status || 'ACTIVE').toUpperCase() !== 'INACTIVE').map((p) => (
-                  <option key={p.project_code} value={p.project_code}>{p.project_code} — {p.project_name}</option>
-                ))}
-              </select>
-            </div>
-            {assignFeedback && (
-              <p className={`text-sm font-medium ${assignFeedback.includes('assigned') ? 'text-green-600' : 'text-red-500'}`}>{assignFeedback}</p>
-            )}
-            <button type="submit" disabled={assignLoading}
-              className="rounded-2xl bg-[#1540A8] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">
-              {assignLoading ? 'Assigning...' : 'Assign Project'}
-            </button>
-          </form>
+        {/* Add Staff card */}
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-slate-950">Add Staff</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Link unassigned staff members to your team.</p>
+          </div>
+          {teamMsg && (
+            <p className={`mb-3 text-sm font-medium ${teamMsg.includes('Failed') || teamMsg.includes('Select') || teamMsg.includes('failed') ? 'text-red-500' : 'text-green-600'}`}>{teamMsg}</p>
+          )}
+          <input type="text" placeholder="Search unlinked staff..." value={addSearch}
+            onChange={(e) => setAddSearch(e.target.value)}
+            className="mb-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <div className="grid gap-1.5 sm:grid-cols-2 max-h-44 overflow-y-auto pr-0.5 mb-4">
+            {unlinkedStaff.filter((s) => {
+              const q = addSearch.trim().toLowerCase();
+              return !q || (s.full_name + ' ' + s.email).toLowerCase().includes(q);
+            }).map((s) => {
+              const isSel = selectedAddIds.includes(s.user_id);
+              return (
+                <button key={s.user_id} type="button"
+                  onClick={() => setSelectedAddIds((p) => p.includes(s.user_id) ? p.filter((x) => x !== s.user_id) : [...p, s.user_id])}
+                  className={`flex flex-col rounded-2xl border px-3 py-2 text-left text-sm transition ${isSel ? 'border-blue-300 bg-[#E8EEFF]' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}>
+                  <p className="font-semibold text-slate-800 text-xs">{s.full_name}</p>
+                  <p className="text-xs text-slate-400">{s.email}</p>
+                </button>
+              );
+            })}
+            {unlinkedStaff.length === 0 && <p className="text-xs text-slate-400 col-span-full">All staff are in your team.</p>}
+          </div>
+          <button onClick={handleAddToTeam} disabled={teamSubmitting || selectedAddIds.length === 0}
+            className="mt-auto rounded-2xl bg-[#1540A8] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+            {teamSubmitting ? 'Saving...' : `Add ${selectedAddIds.length > 0 ? selectedAddIds.length + ' ' : ''}Selected`}
+          </button>
         </section>
       </div>
 
-      {/* Add Staff card */}
+      {/* Project allocation workflows: assign staff to project codes + review current assignments */}
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-slate-950">Add Staff</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Link unassigned staff members to your team.</p>
-        </div>
-        {teamMsg && (
-          <p className={`mb-3 text-sm font-medium ${teamMsg.includes('Failed') || teamMsg.includes('Select') || teamMsg.includes('failed') ? 'text-red-500' : 'text-green-600'}`}>{teamMsg}</p>
-        )}
-        <input type="text" placeholder="Search unlinked staff..." value={addSearch}
-          onChange={(e) => setAddSearch(e.target.value)}
-          className="mb-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-4 max-h-44 overflow-y-auto pr-0.5 mb-4">
-          {unlinkedStaff.filter((s) => {
-            const q = addSearch.trim().toLowerCase();
-            return !q || (s.full_name + ' ' + s.email).toLowerCase().includes(q);
-          }).map((s) => {
-            const isSel = selectedAddIds.includes(s.user_id);
-            return (
-              <button key={s.user_id} type="button"
-                onClick={() => setSelectedAddIds((p) => p.includes(s.user_id) ? p.filter((x) => x !== s.user_id) : [...p, s.user_id])}
-                className={`flex flex-col rounded-2xl border px-3 py-2 text-left text-sm transition ${isSel ? 'border-blue-300 bg-[#E8EEFF]' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}>
-                <p className="font-semibold text-slate-800 text-xs">{s.full_name}</p>
-                <p className="text-xs text-slate-400">{s.email}</p>
-              </button>
-            );
-          })}
-          {unlinkedStaff.length === 0 && <p className="text-xs text-slate-400 col-span-full">All staff are in your team.</p>}
-        </div>
-        <button onClick={handleAddToTeam} disabled={teamSubmitting || selectedAddIds.length === 0}
-          className="rounded-2xl bg-[#1540A8] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-          {teamSubmitting ? 'Saving...' : `Add ${selectedAddIds.length > 0 ? selectedAddIds.length + ' ' : ''}Selected`}
-        </button>
+        <h2 className="text-xl font-semibold text-slate-950 mb-1">Assign Staff to Project</h2>
+        <p className="text-sm text-slate-500 mb-4">Assign one or more staff members to a project code.</p>
+        <form onSubmit={handleAssignStaff} className="space-y-4 max-w-lg">
+          <UserMultiSelect label="Staff Members" placeholder="Search staff by name or email..."
+            users={allStaff} selected={selectedStaffIds} onChange={setSelectedStaffIds} />
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Project Code</label>
+            <select value={assignProjectCode} onChange={(e) => setAssignProjectCode(e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Select a project code</option>
+              {projects.filter((p) => (p.status || 'ACTIVE').toUpperCase() !== 'INACTIVE').map((p) => (
+                <option key={p.project_code} value={p.project_code}>{p.project_code} — {p.project_name}</option>
+              ))}
+            </select>
+          </div>
+          {assignFeedback && (
+            <p className={`text-sm font-medium ${assignFeedback.includes('assigned') ? 'text-green-600' : 'text-red-500'}`}>{assignFeedback}</p>
+          )}
+          <button type="submit" disabled={assignLoading}
+            className="rounded-2xl bg-[#1540A8] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">
+            {assignLoading ? 'Assigning...' : 'Assign Project'}
+          </button>
+        </form>
       </section>
 
       {/* Staff–Project Assignment Analysis */}
