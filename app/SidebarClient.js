@@ -20,6 +20,7 @@ const NAV = [
   { label: 'Projects', href: '/my-projects' },
   { label: 'Team', href: '/team' },
   { label: 'Approvals', href: '/approvals' },
+  { label: 'Progress', href: '/progress' },
 ];
 
 // Module-level: resets on every full page reload.
