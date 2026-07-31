@@ -24,7 +24,6 @@ export default function ProjectCodesPage() {
   // Project table filters
   const [projectStatusFilter, setProjectStatusFilter] = useState('ALL');
   const [projectSearch, setProjectSearch] = useState('');
-  const [hideTestCodes, setHideTestCodes] = useState(true);
   const [projectPage, setProjectPage] = useState(1);
 
   // Progress log state
@@ -80,16 +79,14 @@ export default function ProjectCodesPage() {
   useEffect(() => { void fetchLogs(); }, [managerId]);
 
   const resetProjectFilters = () => {
-    setProjectStatusFilter('ALL'); setProjectSearch(''); setHideTestCodes(true); setProjectPage(1);
+    setProjectStatusFilter('ALL'); setProjectSearch(''); setProjectPage(1);
   };
 
   const filteredProjects = projects.filter((p) => {
     const statusOk = projectStatusFilter === 'ALL' || (p.status || 'ACTIVE').toUpperCase() === projectStatusFilter;
     const q = projectSearch.trim().toLowerCase();
     const searchOk = !q || (p.project_code || '').toLowerCase().includes(q) || (p.project_name || '').toLowerCase().includes(q) || (p.account_manager_name || '').toLowerCase().includes(q);
-    const isTestCode = Number(p.budget_hours) === 0 && Number(p.total_tracked_hours) === 0;
-    const testOk = !hideTestCodes || !isTestCode;
-    return statusOk && searchOk && testOk;
+    return statusOk && searchOk;
   });
 
   const filteredLogs = progressLogs.filter((log) => {
@@ -143,12 +140,7 @@ export default function ProjectCodesPage() {
           placeholder="Search code, name or manager..."
           className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
         />
-        <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
-          <input type="checkbox" checked={hideTestCodes} onChange={(e) => setHideTestCodes(e.target.checked)}
-            className="rounded border-slate-300" />
-          Hide test/unused codes
-        </label>
-        {(projectStatusFilter !== 'ALL' || projectSearch || !hideTestCodes) && (
+        {(projectStatusFilter !== 'ALL' || projectSearch) && (
           <button onClick={resetProjectFilters}
             className="rounded-2xl border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50">
             Reset Filters
@@ -172,10 +164,10 @@ export default function ProjectCodesPage() {
               <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Loading project codes...</td></tr>
             ) : (() => {
               if (filteredProjects.length === 0) return <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">No project codes found.</td></tr>;
-              const totalPages = Math.max(1, Math.ceil(filteredProjects.length / 10));
+              const totalPages = Math.max(1, Math.ceil(filteredProjects.length / 6));
               const safePage = Math.min(projectPage, totalPages);
-              const start = (safePage - 1) * 10;
-              const page = filteredProjects.slice(start, start + 10);
+              const start = (safePage - 1) * 6;
+              const page = filteredProjects.slice(start, start + 6);
               return (
                 <>
                   {page.map((project) => {
@@ -208,7 +200,7 @@ export default function ProjectCodesPage() {
                   {totalPages > 1 && (
                     <tr><td colSpan={6} className="px-6 py-3 bg-slate-50">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Showing {start + 1}–{Math.min(start + 10, filteredProjects.length)} of {filteredProjects.length}</span>
+                        <span className="text-xs text-slate-500">Showing {start + 1}–{Math.min(start + 6, filteredProjects.length)} of {filteredProjects.length}</span>
                         <div className="flex gap-2">
                           <button onClick={() => setProjectPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
                             className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">Prev</button>
@@ -286,10 +278,10 @@ export default function ProjectCodesPage() {
               ) : filteredLogs.length === 0 ? (
                 <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No progress logs found.</td></tr>
               ) : (() => {
-                const totalPages = Math.max(1, Math.ceil(filteredLogs.length / 8));
+                const totalPages = Math.max(1, Math.ceil(filteredLogs.length / 6));
                 const safePage = Math.min(logsPage, totalPages);
-                const start = (safePage - 1) * 8;
-                const page = filteredLogs.slice(start, start + 8);
+                const start = (safePage - 1) * 6;
+                const page = filteredLogs.slice(start, start + 6);
                 return (
                   <>
                     {page.map((log, idx) => (
@@ -313,7 +305,7 @@ export default function ProjectCodesPage() {
                     {totalPages > 1 && (
                       <tr><td colSpan={5} className="px-6 py-3 bg-slate-50">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">Showing {start + 1}–{Math.min(start + 8, filteredLogs.length)} of {filteredLogs.length}</span>
+                          <span className="text-xs text-slate-500">Showing {start + 1}–{Math.min(start + 6, filteredLogs.length)} of {filteredLogs.length}</span>
                           <div className="flex gap-2">
                             <button onClick={() => setLogsPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
                               className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">Prev</button>
