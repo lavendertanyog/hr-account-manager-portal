@@ -238,9 +238,9 @@ export default function AccountManagerDashboard() {
   };
 
   const stats = [
-    { label: 'Pending Allocations', value: loading ? '—' : allocations.length, onClick: () => goToTab('allocations') },
-    { label: 'Budget Requests', value: budgetRequests.length, onClick: () => goToTab('budgets') },
-    { label: 'Staff Registrations', value: pendingStaff.length, onClick: () => goToTab('staff') },
+    { key: 'allocations', label: 'Pending Allocations', value: loading ? '—' : allocations.length, onClick: () => goToTab('allocations') },
+    { key: 'budgets', label: 'Budget Requests', value: budgetRequests.length, onClick: () => goToTab('budgets') },
+    { key: 'staff', label: 'Staff Registrations', value: pendingStaff.length, onClick: () => goToTab('staff') },
   ];
 
   return (
@@ -266,7 +266,9 @@ export default function AccountManagerDashboard() {
       <div className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {stats.map((s) => (
           <button key={s.label} type="button" onClick={s.onClick}
-            className="text-left rounded-2xl border border-gray-100 bg-white px-6 py-5 shadow-sm transition hover:shadow-md hover:border-slate-300">
+            className={`text-left rounded-2xl border bg-white px-6 py-5 shadow-sm transition ${
+              activeTab === s.key ? 'border-[#1a3a8f] ring-2 ring-[#1a3a8f]/30' : 'border-gray-100 hover:border-slate-300'
+            }`}>
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">{s.label}</p>
             <p className="mt-3 text-4xl font-semibold text-slate-900">{s.value}</p>
           </button>

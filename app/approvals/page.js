@@ -254,6 +254,23 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
+      {/* Stat cards — click to jump to the matching tab below */}
+      <div className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {[
+          { key: 'ALLOCATION', label: 'Pending Allocations', value: allocations.length },
+          { key: 'BUDGET', label: 'Budget Requests', value: budgetRequests.length },
+          { key: 'STAFF', label: 'Staff Registrations', value: pendingStaff.length },
+        ].map((s) => (
+          <button key={s.key} type="button" onClick={() => setActiveTab(s.key)}
+            className={`text-left rounded-2xl border bg-white px-6 py-5 shadow-sm transition ${
+              activeTab === s.key ? 'border-[#1a3a8f] ring-2 ring-[#1a3a8f]/30' : 'border-gray-100 hover:border-slate-300'
+            }`}>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">{s.label}</p>
+            <p className="mt-3 text-4xl font-semibold text-slate-900">{s.value}</p>
+          </button>
+        ))}
+      </div>
+
       {/* Tabs */}
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
         <div className="flex flex-wrap gap-1 border-b border-gray-100 px-4 pt-4">
