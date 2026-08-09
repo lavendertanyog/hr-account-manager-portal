@@ -119,7 +119,7 @@ export default function ProjectCodesPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-slate-950">Progress</h1>
+        <h1 className="mt-2 text-4xl font-semibold text-slate-950">Progress</h1>
         <p className="mt-1 text-sm text-slate-500">Active project codes and team progress logs.</p>
       </div>
 

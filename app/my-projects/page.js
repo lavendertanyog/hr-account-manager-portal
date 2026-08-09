@@ -323,7 +323,7 @@ export default function ProjectCodesPage() {
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-semibold text-slate-950">Projects</h1>
+        <h1 className="mt-2 text-4xl font-semibold text-slate-950">Projects</h1>
         <p className="mt-1 text-sm text-slate-500">Create, edit and manage all project codes.</p>
       </div>
 
