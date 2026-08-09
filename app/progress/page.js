@@ -123,31 +123,32 @@ export default function ProjectCodesPage() {
         <p className="mt-1 text-sm text-slate-500">Active project codes and team progress logs.</p>
       </div>
 
-      {/* Project codes toolbar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        {['ALL', 'ACTIVE', 'INACTIVE'].map((f) => (
-          <button key={f} onClick={() => setProjectStatusFilter(f)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-              projectStatusFilter === f ? 'bg-[#1540A8] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}>
-            {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
-          </button>
-        ))}
-        <input
-          type="text"
-          value={projectSearch}
-          onChange={(e) => setProjectSearch(e.target.value)}
-          placeholder="Search code, name or manager..."
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-        />
-        {(projectStatusFilter !== 'ALL' || projectSearch) && (
-          <button onClick={resetProjectFilters}
-            className="rounded-2xl border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50">
-            Reset Filters
-          </button>
-        )}
-      </div>
-      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm mb-10">
+      <div className="rounded-3xl border border-slate-200 bg-white shadow-sm mb-10 overflow-hidden">
+        {/* Project codes toolbar */}
+        <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-slate-100">
+          {['ALL', 'ACTIVE', 'INACTIVE'].map((f) => (
+            <button key={f} onClick={() => setProjectStatusFilter(f)}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                projectStatusFilter === f ? 'bg-[#1540A8] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}>
+              {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
+            </button>
+          ))}
+          <input
+            type="text"
+            value={projectSearch}
+            onChange={(e) => setProjectSearch(e.target.value)}
+            placeholder="Search code, name or manager..."
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+          />
+          {(projectStatusFilter !== 'ALL' || projectSearch) && (
+            <button onClick={resetProjectFilters}
+              className="rounded-2xl border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50">
+              Reset Filters
+            </button>
+          )}
+        </div>
+        <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-[0.22em] text-[0.70rem]">
             <tr>
@@ -215,6 +216,7 @@ export default function ProjectCodesPage() {
             })()}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Progress Logs section */}
