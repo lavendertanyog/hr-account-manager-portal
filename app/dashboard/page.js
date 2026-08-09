@@ -302,10 +302,6 @@ export default function AccountManagerDashboard() {
 
         {activeTab === 'allocations' ? (
           <div>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
-              <h2 className="text-sm font-bold text-slate-900">Allocation requests</h2>
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1540A8]">Live data</span>
-            </div>
             {loading ? (
               <p className="px-6 py-8 text-slate-400">Loading...</p>
             ) : allocations.length === 0 ? (

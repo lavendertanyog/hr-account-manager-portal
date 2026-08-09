@@ -293,11 +293,7 @@ export default function ApprovalsPage() {
       {/* ─── PENDING (Allocations / Budget / Staff) ─── */}
       {activeTab !== 'HISTORY' && (
         <div className="p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Pending Approvals</p>
-              <h2 className="mt-1 text-2xl font-semibold text-slate-950">Review inbox</h2>
-            </div>
+          <div className="flex flex-wrap items-center justify-end gap-4 mb-5">
             {currentList.length > 0 && (
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-600 cursor-pointer">
