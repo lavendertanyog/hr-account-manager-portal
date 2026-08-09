@@ -128,7 +128,7 @@ export default function ProjectCodesPage() {
         <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-slate-100">
           {['ALL', 'ACTIVE', 'INACTIVE'].map((f) => (
             <button key={f} onClick={() => setProjectStatusFilter(f)}
-              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
                 projectStatusFilter === f ? 'bg-[#1540A8] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}>
               {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
