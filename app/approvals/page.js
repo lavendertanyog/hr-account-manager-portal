@@ -394,14 +394,14 @@ export default function ApprovalsPage() {
                 </button>
               ))}
             </div>
-            <input type="text" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)}
-              placeholder="Search staff or project…"
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm text-slate-900 w-52 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <input type="date" value={historyDateFrom} onChange={(e) => setHistoryDateFrom(e.target.value)}
               className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <span className="text-xs text-slate-400">to</span>
             <input type="date" value={historyDateTo} onChange={(e) => setHistoryDateTo(e.target.value)}
               className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="text" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)}
+              placeholder="Search staff or project…"
+              className="ml-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm text-slate-900 w-52 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
 
           {filteredHistory.length === 0 ? (
