@@ -394,7 +394,7 @@ export default function ApprovalsPage() {
                 { id: 'STAFF', label: 'Staff' },
               ].map((c) => (
                 <button key={c.id} type="button" onClick={() => setHistoryTypeFilter(c.id)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+                  className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
                     historyTypeFilter === c.id ? 'bg-[#1540A8] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}>
                   {c.label}

@@ -502,21 +502,30 @@ export default function AccountManagerDashboard() {
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-gray-50 bg-gray-50/50">
-              <select value={historyTypeFilter} onChange={(e) => { setHistoryTypeFilter(e.target.value); setHistoryPage(1); }}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                <option value="ALL">All Types</option>
-                <option value="ALLOCATION">Allocations</option>
-                <option value="BUDGET">Budget Requests</option>
-                <option value="STAFF">Staff Registrations</option>
-              </select>
+              <div className="flex gap-1.5">
+                {[
+                  { id: 'ALL', label: 'All' },
+                  { id: 'ALLOCATION', label: 'Allocations' },
+                  { id: 'BUDGET', label: 'Budget Requests' },
+                  { id: 'STAFF', label: 'Staff Registrations' },
+                ].map((f) => (
+                  <button key={f.id} type="button"
+                    onClick={() => { setHistoryTypeFilter(f.id); setHistoryPage(1); }}
+                    className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                      historyTypeFilter === f.id ? 'bg-[#1540A8] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
               <input type="date" value={historyDateFrom} onChange={(e) => { setHistoryDateFrom(e.target.value); setHistoryPage(1); }}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <span className="text-xs text-slate-400">to</span>
               <input type="date" value={historyDateTo} onChange={(e) => { setHistoryDateTo(e.target.value); setHistoryPage(1); }}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <input type="text" value={historySearch} onChange={(e) => { setHistorySearch(e.target.value); setHistoryPage(1); }}
                 placeholder="Search staff, manager, or project…"
-                className="ml-auto rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-slate-900 w-64 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="ml-auto rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
             {historyLoading ? (
