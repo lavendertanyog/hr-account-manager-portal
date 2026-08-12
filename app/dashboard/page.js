@@ -495,10 +495,6 @@ export default function AccountManagerDashboard() {
           </div>
         ) : (
           <div>
-            <div className="px-6 py-4 border-b border-gray-50">
-              <h2 className="text-2xl font-semibold text-slate-950">All reviewed requests</h2>
-            </div>
-
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-gray-50 bg-gray-50/50">
               <div className="flex gap-1.5">

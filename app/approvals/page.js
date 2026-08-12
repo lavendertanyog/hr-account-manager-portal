@@ -377,13 +377,6 @@ export default function ApprovalsPage() {
       {/* ─── HISTORY TAB ─── */}
       {activeTab === 'HISTORY' && (
         <div className="p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Decision History</p>
-              <h2 className="mt-1 text-2xl font-semibold text-slate-950">All reviewed requests</h2>
-            </div>
-          </div>
-
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3 mb-5 pb-5 border-b border-slate-100">
             <div className="flex gap-1.5">
