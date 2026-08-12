@@ -496,8 +496,7 @@ export default function AccountManagerDashboard() {
         ) : (
           <div>
             <div className="px-6 py-4 border-b border-gray-50">
-              <h2 className="text-sm font-bold text-slate-900">History</h2>
-              <p className="text-xs text-slate-400 mt-0.5">All reviewed allocations, budget requests, and staff registrations.</p>
+              <h2 className="text-2xl font-semibold text-slate-950">All reviewed requests</h2>
             </div>
 
             {/* Filters */}
@@ -540,7 +539,7 @@ export default function AccountManagerDashboard() {
                       <th className="px-6 py-4">Event / Type</th>
                       <th className="px-6 py-4">Description</th>
                       <th className="px-6 py-4">Target / Project</th>
-                      <th className="px-6 py-4">Actor / Manager</th>
+                      <th className="px-6 py-4">Actor</th>
                       <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4">Date &amp; Time</th>
                     </tr>
