@@ -19,7 +19,6 @@ const NAV = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Projects', href: '/my-projects' },
   { label: 'Team', href: '/team' },
-  { label: 'Approvals', href: '/approvals' },
   { label: 'Progress', href: '/progress' },
 ];
 
