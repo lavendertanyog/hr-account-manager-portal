@@ -352,7 +352,7 @@ export default function ApprovalsPage() {
                           </>
                         )}
                         <p className="mt-1 text-xs text-slate-400">
-                          Submitted {item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG') : '—'}
+                          Submitted {item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG', { timeZone: 'Asia/Singapore' }) : '—'}
                         </p>
                       </div>
                     </div>
@@ -399,9 +399,14 @@ export default function ApprovalsPage() {
             <span className="text-xs text-slate-400">to</span>
             <input type="date" value={historyDateTo} onChange={(e) => setHistoryDateTo(e.target.value)}
               className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="text" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)}
-              placeholder="Search staff or project…"
-              className="ml-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm text-slate-900 w-52 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="relative ml-auto">
+              <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input type="text" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)}
+                placeholder="Search staff or project…"
+                className="rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-1.5 text-sm text-slate-900 w-52 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
           </div>
 
           {filteredHistory.length === 0 ? (
@@ -428,7 +433,7 @@ export default function ApprovalsPage() {
                       <td className="px-6 py-4 text-slate-700">{row.actor}</td>
                       <td className="px-6 py-4">{statusBadge(row.status)}</td>
                       <td className="px-6 py-4 text-xs text-slate-400">
-                        {row.date ? new Date(row.date).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                        {row.date ? new Date(row.date).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Singapore' }) : '—'}
                       </td>
                     </tr>
                   ))}

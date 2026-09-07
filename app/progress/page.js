@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 const isAutoEntry = (summary) => String(summary || '').startsWith('Auto-progress baseline');
 
@@ -16,6 +17,8 @@ function formatSummary(log) {
 }
 
 export default function ProjectCodesPage() {
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
   const [projects, setProjects] = useState([]);
   const [utilisationMap, setUtilisationMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -38,10 +41,15 @@ export default function ProjectCodesPage() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('am_portal_user') || '{}');
-      if (u?.user_id) setSessionUser(u);
-    } catch {}
-  }, []);
+      const stored = sessionStorage.getItem('am_portal_user');
+      if (!stored) { router.push('/'); return; }
+      const u = JSON.parse(stored);
+      const roles = Array.isArray(u?.user_roles) ? u.user_roles.map((r) => String(r).toLowerCase()) : [String(u?.user_role || '').toLowerCase()];
+      if (!u?.user_id || (!roles.includes('account_manager') && !roles.includes('hr'))) { router.push('/'); return; }
+      setSessionUser(u);
+      setAuthChecked(true);
+    } catch { router.push('/'); }
+  }, [router]);
 
   const managerId = sessionUser?.user_id || '';
 
@@ -75,7 +83,7 @@ export default function ProjectCodesPage() {
     }
   };
 
-  useEffect(() => { void fetchAll(); }, [backendBaseUrl]);
+  useEffect(() => { if (authChecked) void fetchAll(); }, [backendBaseUrl, authChecked]);
   useEffect(() => { void fetchLogs(); }, [managerId]);
 
   const resetProjectFilters = () => {
@@ -116,6 +124,8 @@ export default function ProjectCodesPage() {
     URL.revokeObjectURL(url);
   };
 
+  if (!authChecked) return <div className="p-8 text-slate-500">Loading...</div>;
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -134,13 +144,18 @@ export default function ProjectCodesPage() {
               {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
             </button>
           ))}
-          <input
-            type="text"
-            value={projectSearch}
-            onChange={(e) => setProjectSearch(e.target.value)}
-            placeholder="Search code, name or manager..."
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-          />
+          <div className="relative">
+            <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={projectSearch}
+              onChange={(e) => setProjectSearch(e.target.value)}
+              placeholder="Search code, name or manager..."
+              className="rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            />
+          </div>
           {(projectStatusFilter !== 'ALL' || projectSearch) && (
             <button onClick={resetProjectFilters}
               className="rounded-2xl border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50">

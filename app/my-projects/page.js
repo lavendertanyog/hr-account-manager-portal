@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 // -- Multi-select dropdown for managers/account_managers ----------------------
 function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
@@ -42,13 +43,16 @@ function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
       {/* ref only wraps the input + dropdown panel, so clicking the label, chips, or any
           other whitespace on the page (not just outside the whole field) closes the menu */}
       <div ref={ref} className="relative">
+        <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
         <input
           type="text"
           value={search}
           onFocus={() => setOpen(true)}
           onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
           placeholder={placeholder}
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {open && (
           <div className="absolute z-50 mt-1 max-h-52 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
@@ -92,6 +96,8 @@ function Modal({ title, onClose, children }) {
 }
 
 export default function ProjectCodesPage() {
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
   const [projects, setProjects] = useState([]);
   const [utilisationMap, setUtilisationMap] = useState({});
   const [managerOnlyUsers, setManagerOnlyUsers] = useState([]);
@@ -130,10 +136,15 @@ export default function ProjectCodesPage() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('am_portal_user') || '{}');
-      if (u?.user_id) setSessionUser(u);
-    } catch {}
-  }, []);
+      const stored = sessionStorage.getItem('am_portal_user');
+      if (!stored) { router.push('/'); return; }
+      const u = JSON.parse(stored);
+      const roles = Array.isArray(u?.user_roles) ? u.user_roles.map((r) => String(r).toLowerCase()) : [String(u?.user_role || '').toLowerCase()];
+      if (!u?.user_id || (!roles.includes('account_manager') && !roles.includes('hr'))) { router.push('/'); return; }
+      setSessionUser(u);
+      setAuthChecked(true);
+    } catch { router.push('/'); }
+  }, [router]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -163,8 +174,9 @@ export default function ProjectCodesPage() {
   }, [backendBaseUrl]);
 
   useEffect(() => {
+    if (!authChecked) return;
     void fetchAll();
-  }, [fetchAll]);
+  }, [fetchAll, authChecked]);
 
   useEffect(() => {
     const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenuCode(null); };
@@ -211,8 +223,8 @@ export default function ProjectCodesPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault(); setFormError('');
-    if (!formCode.trim() || !formName.trim() || !formHours || formAccountManagerIds.length === 0 || formManagerIds.length === 0) {
-      setFormError('All fields are required: Project Code, Project Name, Budget Hours, at least one Account Manager, and at least one Manager.');
+    if (!formCode.trim() || !formName.trim() || !formHours || formManagerIds.length === 0) {
+      setFormError('Project Code, Project Name, Budget Hours, and at least one Manager are required. Account Manager is optional — leave it blank for projects with no AM assigned.');
       return;
     }
     setFormSubmitting(true);
@@ -302,7 +314,7 @@ export default function ProjectCodesPage() {
         />
       </div>
       <UserMultiSelect
-        label={<>Account Manager <span className="text-red-500">*</span></>}
+        label={<>Account Manager <span className="text-slate-400 font-normal">(optional)</span></>}
         placeholder="Search by name or email..."
         users={accountManagerUsers}
         selected={formAccountManagerIds}
@@ -319,6 +331,8 @@ export default function ProjectCodesPage() {
     </div>
   );
 
+  if (!authChecked) return <div className="p-8 text-slate-500">Loading...</div>;
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -331,13 +345,18 @@ export default function ProjectCodesPage() {
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         {/* Unified toolbar: search · status filter · manager filter … + Issue New Code */}
         <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-slate-100">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search code or project name..."
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-          />
+          <div className="relative">
+            <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search code or project name..."
+              className="rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            />
+          </div>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
             className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="ALL">Status: All</option>

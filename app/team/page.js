@@ -5,7 +5,9 @@ import axios from 'axios';
 
 function formatDt(dt) {
   if (!dt) return 'ACTIVE';
-  return new Date(dt).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' });
+  // timeZone pinned explicitly so this always reads correctly regardless of the viewer's own
+  // device timezone (see AttendanceReminders.js for the class of bug this avoids).
+  return new Date(dt).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Singapore' });
 }
 
 function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
@@ -36,11 +38,16 @@ function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
           ))}
         </div>
       )}
-      <input type="text" value={search} onFocus={() => setOpen(true)}
-        onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
-        placeholder={placeholder}
-        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <div className="relative">
+        <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input type="text" value={search} onFocus={() => setOpen(true)}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          placeholder={placeholder}
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
       {open && (
         <div className="absolute z-50 mt-1 max-h-52 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
           {filtered.length === 0 ? <p className="px-4 py-3 text-sm text-slate-400">No results</p>
@@ -226,10 +233,15 @@ export default function TeamPage() {
 
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{myTeam.length} member{myTeam.length !== 1 ? 's' : ''}</p>
-            <input type="text" placeholder="Search..." value={teamSearch}
-              onChange={(e) => setTeamSearch(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
-            />
+            <div className="relative">
+              <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input type="text" placeholder="Search..." value={teamSearch}
+                onChange={(e) => setTeamSearch(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+              />
+            </div>
           </div>
           {loading ? <p className="text-sm text-slate-500">Loading...</p>
             : myTeam.length === 0 ? <p className="text-sm text-slate-400 italic">No staff linked yet.</p>
@@ -263,10 +275,15 @@ export default function TeamPage() {
           {teamMsg && (
             <p className={`mb-3 text-sm font-medium ${teamMsg.includes('Failed') || teamMsg.includes('Select') || teamMsg.includes('failed') ? 'text-red-500' : 'text-green-600'}`}>{teamMsg}</p>
           )}
-          <input type="text" placeholder="Search unlinked staff..." value={addSearch}
-            onChange={(e) => setAddSearch(e.target.value)}
-            className="mb-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative mb-3">
+            <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" placeholder="Search unlinked staff..." value={addSearch}
+              onChange={(e) => setAddSearch(e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
           <div className="grid gap-1.5 sm:grid-cols-2 max-h-44 overflow-y-auto pr-0.5 mb-4">
             {unlinkedStaff.filter((s) => {
               const q = addSearch.trim().toLowerCase();

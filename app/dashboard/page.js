@@ -338,7 +338,7 @@ export default function AccountManagerDashboard() {
                               <td className="px-6 py-4 text-slate-700">{formatHours(item.hours_per_week)}</td>
                               <td className="px-6 py-4 text-slate-600 max-w-[160px] truncate">{item.reason || item.justification || '—'}</td>
                               <td className="px-6 py-4 text-xs text-slate-400">
-                                {item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG') : '—'}
+                                {item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG', { timeZone: 'Asia/Singapore' }) : '—'}
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex gap-2">
@@ -415,7 +415,7 @@ export default function AccountManagerDashboard() {
                               <td className="px-6 py-4 text-slate-700">{formatHours(item.requested_hours)} hrs</td>
                               <td className="px-6 py-4 text-slate-600 max-w-[160px] truncate">{item.justification || '—'}</td>
                               <td className="px-6 py-4"><StatusPill status={item.status} /></td>
-                              <td className="px-6 py-4 text-xs text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG') : '—'}</td>
+                              <td className="px-6 py-4 text-xs text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG', { timeZone: 'Asia/Singapore' }) : '—'}</td>
                               <td className="px-6 py-4">
                                 <div className="flex gap-2">
                                   <button type="button" disabled={budgetProcessingId === item.request_id}
@@ -477,7 +477,7 @@ export default function AccountManagerDashboard() {
                       <tr key={u.user_id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 font-semibold text-slate-900">{u.full_name}</td>
                         <td className="px-6 py-4 text-slate-600">{u.email}</td>
-                        <td className="px-6 py-4 text-xs text-slate-400">{u.created_at ? new Date(u.created_at).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td>
+                        <td className="px-6 py-4 text-xs text-slate-400">{u.created_at ? new Date(u.created_at).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Singapore' }) : '—'}</td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
                             <button onClick={() => handleStaffApproval(u.user_id, 'approve')}
@@ -518,9 +518,14 @@ export default function AccountManagerDashboard() {
               <span className="text-xs text-slate-400">to</span>
               <input type="date" value={historyDateTo} onChange={(e) => { setHistoryDateTo(e.target.value); setHistoryPage(1); }}
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <input type="text" value={historySearch} onChange={(e) => { setHistorySearch(e.target.value); setHistoryPage(1); }}
-                placeholder="Search staff, manager, or project…"
-                className="ml-auto rounded-2xl border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-900 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <div className="relative ml-auto">
+                <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input type="text" value={historySearch} onChange={(e) => { setHistorySearch(e.target.value); setHistoryPage(1); }}
+                  placeholder="Search staff, manager, or project…"
+                  className="rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-1.5 text-sm text-slate-900 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
             </div>
 
             {historyLoading ? (
@@ -555,7 +560,7 @@ export default function AccountManagerDashboard() {
                               <td className="px-6 py-4 text-slate-700">{row.actor}</td>
                               <td className="px-6 py-4"><StatusPill status={row.status} /></td>
                               <td className="px-6 py-4 text-xs text-slate-400">
-                                {row.date ? new Date(row.date).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                                {row.date ? new Date(row.date).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Singapore' }) : '—'}
                               </td>
                             </tr>
                           ))}
