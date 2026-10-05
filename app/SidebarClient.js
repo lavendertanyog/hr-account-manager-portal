@@ -20,6 +20,7 @@ const NAV = [
   { label: 'Projects', href: '/my-projects' },
   { label: 'Team', href: '/team' },
   { label: 'Progress', href: '/progress' },
+  { label: 'Reports', href: '/reports' },
 ];
 
 // Module-level: resets on every full page reload.
@@ -141,14 +142,16 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
       {/* Profile block */}
       <div className="px-3 pb-5 pt-3" style={{ borderTop: '1px solid #f0f0f0' }}>
         <div className="flex items-center gap-3 rounded-2xl" style={{ background: '#f5f7fc', padding: '12px 14px' }}>
-          <div className="flex items-center justify-center rounded-full text-white text-sm font-bold flex-shrink-0"
-            style={{ width: 38, height: 38, background: '#1a3a8f', fontSize: 13 }}>
-            {initials}
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-semibold truncate" style={{ color: '#111827', lineHeight: 1.3 }}>{displayName}</p>
-            <p className="text-xs truncate" style={{ color: '#6b7280', marginTop: 1 }}>Account Manager</p>
-          </div>
+          <Link href="/profile" className="flex items-center gap-3 flex-1 overflow-hidden" title="View profile">
+            <div className="flex items-center justify-center rounded-full text-white text-sm font-bold flex-shrink-0"
+              style={{ width: 38, height: 38, background: '#1a3a8f', fontSize: 13 }}>
+              {initials}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <p className="text-sm font-semibold truncate" style={{ color: '#111827', lineHeight: 1.3 }}>{displayName}</p>
+              <p className="text-xs truncate" style={{ color: '#6b7280', marginTop: 1 }}>Account Manager</p>
+            </div>
+          </Link>
           <button onClick={handleLogout} title="Log out"
             className="flex-shrink-0 flex items-center justify-center rounded-lg transition hover:bg-red-50"
             style={{ width: 30, height: 30, color: '#9ca3af' }}>
