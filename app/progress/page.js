@@ -2,6 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+
+// Project lifecycle: ACTIVE -> DEPLOYED -> MAINTENANCE (-> DEPLOYED again). Legacy INACTIVE
+// projects (from the old Deactivate action) are shown as DEPLOYED.
+const projectStatusOf = (p) => {
+  const s = String(p?.status || 'ACTIVE').toUpperCase();
+  return s === 'INACTIVE' ? 'DEPLOYED' : s;
+};
+const PROJECT_STATUS_LABEL = { ACTIVE: 'Active', DEPLOYED: 'Deployed', MAINTENANCE: 'Maintenance' };
+const PROJECT_STATUS_PILL = {
+  ACTIVE: 'bg-[#E8EEFF] text-[#163EAF]',
+  DEPLOYED: 'bg-emerald-100 text-emerald-700',
+  MAINTENANCE: 'bg-amber-100 text-amber-700',
+};
 import { useRouter } from 'next/navigation';
 
 const isAutoEntry = (summary) => String(summary || '').startsWith('Auto-progress baseline');
@@ -91,7 +104,7 @@ export default function ProjectCodesPage() {
   };
 
   const filteredProjects = projects.filter((p) => {
-    const statusOk = projectStatusFilter === 'ALL' || (p.status || 'ACTIVE').toUpperCase() === projectStatusFilter;
+    const statusOk = projectStatusFilter === 'ALL' || projectStatusOf(p) === projectStatusFilter;
     const q = projectSearch.trim().toLowerCase();
     const searchOk = !q || (p.project_code || '').toLowerCase().includes(q) || (p.project_name || '').toLowerCase().includes(q) || (p.account_manager_name || '').toLowerCase().includes(q);
     return statusOk && searchOk;
@@ -136,7 +149,7 @@ export default function ProjectCodesPage() {
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm mb-10 overflow-hidden">
         {/* Project codes toolbar */}
         <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-slate-100">
-          {['ALL', 'ACTIVE', 'INACTIVE'].map((f) => (
+          {['ALL', 'ACTIVE', 'DEPLOYED', 'MAINTENANCE'].map((f) => (
             <button key={f} onClick={() => setProjectStatusFilter(f)}
               className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
                 projectStatusFilter === f ? 'bg-[#1540A8] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -190,7 +203,7 @@ export default function ProjectCodesPage() {
                     const hours = project.budget_hours ?? 0;
                     const utilization = utilisationMap[project.project_code] != null && !isNaN(Number(utilisationMap[project.project_code])) ? Number(utilisationMap[project.project_code]) : (Number(project.budget_hours) > 0 ? Math.round(((project.total_tracked_hours ?? 0) / Number(project.budget_hours)) * 100) : 0);
                     const managerDisplay = project.account_manager_name || 'N/A';
-                    const isInactive = (project.status || '').toUpperCase() === 'INACTIVE';
+                    const status = projectStatusOf(project);
                     return (
                       <tr key={project.project_code} className="hover:bg-slate-50">
                         <td className="px-6 py-4 font-semibold text-slate-900">{project.project_code}</td>
@@ -205,9 +218,7 @@ export default function ProjectCodesPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            isInactive ? 'bg-red-100 text-red-700' : 'bg-[#E8EEFF] text-[#163EAF]'
-                          }`}>{project.status ?? 'Active'}</span>
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${PROJECT_STATUS_PILL[status] || PROJECT_STATUS_PILL.ACTIVE}`}>{PROJECT_STATUS_LABEL[status] || status}</span>
                         </td>
                         <td className="px-6 py-4 text-slate-700 max-w-[180px] truncate">{managerDisplay}</td>
                       </tr>
