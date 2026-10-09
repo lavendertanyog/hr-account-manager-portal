@@ -106,7 +106,7 @@ export default function AccountManagerDashboard() {
   const fetchBudgetRequests = async () => {
     try {
       const [pendingRes, histRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/v1/projects/budget-requests/pending-am`).catch(() => null),
+        axios.get(`${API_BASE}/api/v1/projects/budget-requests/pending-am?reviewerId=${user?.user_id || ''}`).catch(() => null),
         axios.get(`${API_BASE}/api/v1/projects/budget-requests/history`).catch(() => null),
       ]);
       setBudgetRequests(pendingRes?.data?.data || []);

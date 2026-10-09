@@ -85,13 +85,13 @@ export default function ApprovalsPage() {
   const loadBudgets = useCallback(async () => {
     try {
       const [pendingRes, histRes] = await Promise.all([
-        axios.get(`${backendBaseUrl}/api/v1/projects/budget-requests/pending-am`).catch(() => ({ data: { data: [] } })),
+        axios.get(`${backendBaseUrl}/api/v1/projects/budget-requests/pending-am?reviewerId=${managerId}`).catch(() => ({ data: { data: [] } })),
         axios.get(`${backendBaseUrl}/api/v1/projects/budget-requests/history`).catch(() => ({ data: { data: [] } })),
       ]);
       setBudgetRequests(pendingRes.data.data || []);
       setBudgetHistory((histRes.data.data || []).filter((r) => r.status !== 'PENDING'));
     } catch { setBudgetRequests([]); }
-  }, [backendBaseUrl]);
+  }, [backendBaseUrl, managerId]);
 
   const loadStaff = useCallback(async () => {
     if (!managerId) return;
