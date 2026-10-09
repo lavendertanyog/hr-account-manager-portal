@@ -202,11 +202,11 @@ export default function TeamPage() {
       {/* Projects this manager/AM is in charge of, as assigned by HR */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">You Are In Charge Of</p>
-        {myProjects.filter((p) => (p.status || 'ACTIVE').toUpperCase() !== 'INACTIVE').length === 0 ? (
+        {myProjects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase())).length === 0 ? (
           <p className="text-sm text-slate-400 italic">No projects assigned to you yet. Contact HR to be assigned as manager or account manager on a project.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {myProjects.filter((p) => (p.status || 'ACTIVE').toUpperCase() !== 'INACTIVE').map((p) => (
+            {myProjects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase())).map((p) => (
               <span key={p.project_code}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#E8EEFF] px-3 py-1.5 text-xs font-semibold text-[#1540A8]">
                 {p.project_code} — {p.project_name}
@@ -320,7 +320,7 @@ export default function TeamPage() {
             <select value={assignProjectCode} onChange={(e) => setAssignProjectCode(e.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select a project code</option>
-              {projects.filter((p) => (p.status || 'ACTIVE').toUpperCase() !== 'INACTIVE').map((p) => (
+              {projects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase())).map((p) => (
                 <option key={p.project_code} value={p.project_code}>{p.project_code} — {p.project_name}</option>
               ))}
             </select>
@@ -377,7 +377,7 @@ export default function TeamPage() {
                     <div className="ml-11 flex flex-wrap gap-2">
                       {staff.projects.map((p) => (
                         <span key={p.code} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                          (p.status || '').toUpperCase() === 'INACTIVE' ? 'bg-red-50 text-red-600' : 'bg-[#E8EEFF] text-[#1540A8]'
+                          ['INACTIVE', 'DEPLOYED'].includes((p.status || '').toUpperCase()) ? 'bg-emerald-50 text-emerald-700' : 'bg-[#E8EEFF] text-[#1540A8]'
                         }`}>
                           {p.code}
                           {p.progress != null && <span className="opacity-70">· {p.progress}%</span>}
