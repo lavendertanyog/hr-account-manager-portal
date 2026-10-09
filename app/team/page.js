@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
+import { useConfirm } from '../ConfirmDialog';
 
 function formatDt(dt) {
   if (!dt) return 'ACTIVE';
@@ -82,6 +83,7 @@ export default function TeamPage() {
   const [addSearch, setAddSearch] = useState('');
   const [selectedAddIds, setSelectedAddIds] = useState([]);
   const [teamMsg, setTeamMsg] = useState('');
+  const [confirm, confirmDialog] = useConfirm();
   const [teamSubmitting, setTeamSubmitting] = useState(false);
 
   const [selectedStaffIds, setSelectedStaffIds] = useState([]);
@@ -151,7 +153,15 @@ export default function TeamPage() {
     } finally { setTeamSubmitting(false); }
   };
 
-  const handleRemoveFromTeam = async (staffId) => {
+  const handleRemoveFromTeam = async (staff) => {
+    const confirmed = await confirm({
+      title: 'Remove from team',
+      message: `Remove ${staff.full_name} from your team? They will no longer report to you.`,
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+    if (!confirmed) return;
+    const staffId = staff.user_id;
     setTeamMsg('');
     try {
       await axios.patch(`${backendBaseUrl}/api/v1/users/remove-from-team`, { managerId, staffId });
@@ -178,7 +188,12 @@ export default function TeamPage() {
   };
 
   const handleUnassignProject = async (userId, projectCode) => {
-    const confirmed = window.confirm(`Remove the ${projectCode} project assignment for this staff member?`);
+    const confirmed = await confirm({
+      title: 'Remove project assignment',
+      message: `Remove the ${projectCode} project assignment for this staff member?`,
+      confirmLabel: 'Remove',
+      danger: true,
+    });
     if (!confirmed) return;
     setUnassignFeedback('');
     try {
@@ -256,7 +271,7 @@ export default function TeamPage() {
                       <p className="text-sm font-semibold text-slate-900">{s.full_name}</p>
                       <p className="text-xs text-slate-400">{s.email}</p>
                     </div>
-                    <button onClick={() => handleRemoveFromTeam(s.user_id)}
+                    <button onClick={() => handleRemoveFromTeam(s)}
                       className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 shrink-0">
                       Remove
                     </button>
@@ -395,6 +410,8 @@ export default function TeamPage() {
           );
         })()}
       </section>
+
+      {confirmDialog}
     </div>
   );
 }
