@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { authHeaders, endSession } from './authSession';
+import { WHATS_NEW_LATEST_ID, WHATS_NEW_SEEN_KEY } from './whatsNewData';
 
 function deriveNameFromEmail(email) {
   return String(email || '')
@@ -61,6 +62,12 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
     return next;
   });
   const menuRef = useRef(null);
+  // Red dot on Settings until the latest What's New entry has been opened (remembered per browser).
+  const [seenId, setSeenId] = useState(WHATS_NEW_LATEST_ID);
+  useEffect(() => {
+    try { setSeenId(Number(localStorage.getItem(WHATS_NEW_SEEN_KEY)) || 0); } catch {}
+  }, [pathname]);
+  const hasUnseen = seenId < WHATS_NEW_LATEST_ID;
 
   useEffect(() => {
     try {
@@ -169,6 +176,14 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
           })}
         </nav>
 
+        <div className="px-3 pt-3">
+          <Link href="/whats-new" className="flex items-center justify-between rounded-2xl text-sm font-medium transition-colors"
+            style={{ padding: '13px 18px', background: pathname.startsWith('/whats-new') ? '#e8edf8' : 'white', color: pathname.startsWith('/whats-new') ? '#1a3a8f' : '#374151' }}>
+            What&apos;s new
+            {hasUnseen && <span className="w-2 h-2 rounded-full bg-red-500" aria-label="New updates" />}
+          </Link>
+        </div>
+
         <div className="px-3 pb-5 pt-3" style={{ borderTop: '1px solid #f0f0f0' }}>
           <div className="flex items-center gap-3 rounded-2xl" style={{ background: '#f5f7fc', padding: '12px 14px' }}>
             <Link href="/profile" className="flex items-center gap-3 flex-1 overflow-hidden" title="View profile">
@@ -266,10 +281,11 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
             <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Settings"
               className="flex items-center justify-center"
               style={{
-                width: PILL_W, height: collapsed ? 64 : 93, borderRadius: collapsed ? '24px 24px 0 0' : '36px 36px 0 0',
+                position: 'relative', width: PILL_W, height: collapsed ? 64 : 93, borderRadius: collapsed ? '24px 24px 0 0' : '36px 36px 0 0',
                 background: '#f0c9dc', color: '#16307a', border: 'none', cursor: 'pointer',
               }}>
               <NavIcon name="settings" size={18} />
+              {hasUnseen && <span className="absolute w-2 h-2 rounded-full bg-red-500" style={{ top: 10, right: collapsed ? 8 : 14 }} aria-hidden="true" />}
             </button>
           </div>
           {menuOpen && (
@@ -281,6 +297,15 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
               </div>
               <Link href="/profile" onClick={() => setMenuOpen(false)}
                 className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Profile</Link>
+              <Link href="/whats-new" onClick={() => {
+                setMenuOpen(false);
+                try { localStorage.setItem(WHATS_NEW_SEEN_KEY, String(WHATS_NEW_LATEST_ID)); } catch {}
+                setSeenId(WHATS_NEW_LATEST_ID);
+              }}
+                className="flex items-center justify-between px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                What&apos;s new
+                {hasUnseen && <span className="w-2 h-2 rounded-full bg-red-500" aria-label="New updates" />}
+              </Link>
               <button type="button" onClick={handleLogout}
                 className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Log out</button>
             </div>
