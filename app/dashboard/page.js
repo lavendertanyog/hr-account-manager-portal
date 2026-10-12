@@ -58,6 +58,7 @@ export default function AccountManagerDashboard() {
   // Remark modal (allocations)
   const [remarkModal, setRemarkModal] = useState(null);
   const [remarkText, setRemarkText] = useState('');
+  const [remarkError, setRemarkError] = useState('');
   const [processingId, setProcessingId] = useState(null);
   // Budget review modal
   const [budgetModal, setBudgetModal] = useState(null);
@@ -106,7 +107,7 @@ export default function AccountManagerDashboard() {
   const fetchBudgetRequests = async () => {
     try {
       const [pendingRes, histRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/v1/projects/budget-requests/pending-am`).catch(() => null),
+        axios.get(`${API_BASE}/api/v1/projects/budget-requests/pending-am?reviewerId=${user?.user_id || ''}`).catch(() => null),
         axios.get(`${API_BASE}/api/v1/projects/budget-requests/history`).catch(() => null),
       ]);
       setBudgetRequests(pendingRes?.data?.data || []);
@@ -140,10 +141,17 @@ export default function AccountManagerDashboard() {
   const openRemarkModal = (allocationId, action) => {
     setRemarkModal({ allocationId, action });
     setRemarkText('');
+    setRemarkError('');
   };
 
   const submitReview = async () => {
     if (!remarkModal || !user?.user_id) return;
+    // Same rule as the Approvals page: rejecting needs a reason, approving doesn't.
+    if (remarkModal.action === 'REJECTED' && !remarkText.trim()) {
+      setRemarkError('Please provide a reason for rejecting this request.');
+      return;
+    }
+    setRemarkError('');
     setProcessingId(remarkModal.allocationId);
     try {
       await axios.patch(`${API_BASE}/api/v1/allocations/${remarkModal.allocationId}/account-manager-review`, {
@@ -153,7 +161,7 @@ export default function AccountManagerDashboard() {
       });
       setRemarkModal(null);
       await Promise.all([fetchPending(), fetchHistory()]);
-    } catch { setError(`Failed to ${remarkModal.action.toLowerCase()} allocation.`); }
+    } catch (err) { setError(err.response?.data?.error || `Failed to ${remarkModal.action.toLowerCase()} allocation.`); }
     finally { setProcessingId(null); }
   };
 
@@ -595,14 +603,17 @@ export default function AccountManagerDashboard() {
             <h2 className="text-xl font-semibold text-slate-900 mb-1">
               {remarkModal.action === 'APPROVED' ? 'Approve Allocation' : 'Reject Allocation'}
             </h2>
-            <p className="text-sm text-slate-500 mb-5">Add an optional remark. Staff will be notified.</p>
+            <p className="text-sm text-slate-500 mb-5">
+              {remarkModal.action === 'REJECTED' ? 'Give a reason for rejecting. Staff will be notified.' : 'Add an optional remark. Staff will be notified.'}
+            </p>
             <textarea
               rows={3}
               value={remarkText}
-              onChange={(e) => setRemarkText(e.target.value)}
-              placeholder="Remark (optional)…"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 mb-5"
+              onChange={(e) => { setRemarkText(e.target.value); if (remarkError) setRemarkError(''); }}
+              placeholder={remarkModal.action === 'REJECTED' ? 'Reason for rejecting (required)…' : 'Remark (optional)…'}
+              className={`w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${remarkError ? 'border-red-400 mb-2' : 'border-slate-200 mb-5'}`}
             />
+            {remarkError && <p className="mb-5 text-sm font-medium text-red-500">{remarkError}</p>}
             <div className="flex gap-3 justify-end">
               <button onClick={() => setRemarkModal(null)}
                 className="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700">

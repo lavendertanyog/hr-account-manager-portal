@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
+import { useConfirm } from '../ConfirmDialog';
 
 function formatDateOnly(d) {
   if (!d) return '—';
@@ -54,6 +55,7 @@ export default function ApprovalsPage() {
   const toastTimerRef = useRef(null);
 
   const [selectedIds, setSelectedIds] = useState([]);
+  const [confirm, confirmDialog] = useConfirm();
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
   // History filters
@@ -85,13 +87,13 @@ export default function ApprovalsPage() {
   const loadBudgets = useCallback(async () => {
     try {
       const [pendingRes, histRes] = await Promise.all([
-        axios.get(`${backendBaseUrl}/api/v1/projects/budget-requests/pending-am`).catch(() => ({ data: { data: [] } })),
+        axios.get(`${backendBaseUrl}/api/v1/projects/budget-requests/pending-am?reviewerId=${managerId}`).catch(() => ({ data: { data: [] } })),
         axios.get(`${backendBaseUrl}/api/v1/projects/budget-requests/history`).catch(() => ({ data: { data: [] } })),
       ]);
       setBudgetRequests(pendingRes.data.data || []);
       setBudgetHistory((histRes.data.data || []).filter((r) => r.status !== 'PENDING'));
     } catch { setBudgetRequests([]); }
-  }, [backendBaseUrl]);
+  }, [backendBaseUrl, managerId]);
 
   const loadStaff = useCallback(async () => {
     if (!managerId) return;
@@ -179,7 +181,11 @@ export default function ApprovalsPage() {
 
   const handleBulkApprove = async () => {
     if (selectedIds.length === 0) return;
-    const confirmed = window.confirm(`Approve ${selectedIds.length} selected item(s)?`);
+    const confirmed = await confirm({
+      title: 'Bulk approve',
+      message: `Approve ${selectedIds.length} selected item(s)?`,
+      confirmLabel: 'Approve',
+    });
     if (!confirmed) return;
     setBulkSubmitting(true);
     try {
@@ -502,6 +508,8 @@ export default function ApprovalsPage() {
           <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white">&times;</button>
         </div>
       )}
+
+      {confirmDialog}
     </div>
   );
 }
