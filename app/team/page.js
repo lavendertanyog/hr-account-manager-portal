@@ -205,6 +205,15 @@ export default function TeamPage() {
     } catch (err) { setUnassignFeedback(err.response?.data?.error || 'Failed to unassign.'); }
   };
 
+  const activeMyProjects = myProjects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase()));
+  // How many of this manager's team are assigned to each project (distinct people).
+  const membersByProject = {};
+  teamAssignments.forEach((row) => {
+    if (!row.project_code) return;
+    (membersByProject[row.project_code] ||= new Set()).add(row.user_id);
+  });
+  Object.keys(membersByProject).forEach((code) => { membersByProject[code] = membersByProject[code].size; });
+
   const unlinkedStaff = allStaff.filter((s) => String(s.supervisor_id || '') !== managerId);
 
   return (
@@ -215,22 +224,40 @@ export default function TeamPage() {
       </div>
 
       {/* Projects this manager/AM is in charge of, as assigned by HR */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">You Are In Charge Of</p>
-        {myProjects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase())).length === 0 ? (
-          <p className="text-sm text-slate-400 italic">No projects assigned to you yet. Contact HR to be assigned as manager or account manager on a project.</p>
+      <section className="rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(22,48,122,0.18)]">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-extrabold text-slate-900">
+            Your projects
+            {activeMyProjects.length > 0 && (
+              <span className="ml-2 rounded-full bg-[#E8EEFF] px-2.5 py-0.5 text-xs font-bold text-[#16307a] align-middle">{activeMyProjects.length}</span>
+            )}
+          </h2>
+        </div>
+        {activeMyProjects.length === 0 ? (
+          <p className="py-4 text-sm text-slate-400">No projects assigned to you yet. Contact HR to be assigned as manager or account manager on a project.</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {myProjects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase())).map((p) => (
-              <span key={p.project_code}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#E8EEFF] px-3 py-1.5 text-xs font-semibold text-[#1540A8]">
-                {p.project_code} — {p.project_name}
-                <span className="opacity-60">· {p.my_role === 'account_manager' ? 'AM' : 'Manager'}</span>
-              </span>
-            ))}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {activeMyProjects.map((p) => {
+              const members = membersByProject[p.project_code] || 0;
+              return (
+                <div key={p.project_code} className="flex items-center gap-4 rounded-2xl bg-[#F7F9FD] p-4">
+                  <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#16307a] text-white" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-slate-900" title={p.project_name}>{p.project_name || p.project_code}</span>
+                    <span className="block truncate text-xs text-slate-400">{p.project_code}</span>
+                    <span className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+                      <span className="rounded-full bg-white px-2 py-0.5 font-semibold text-[#1a3a8f]">{p.my_role === 'account_manager' ? 'Account manager' : 'Manager'}</span>
+                      {members > 0 && <span>{members} on your team</span>}
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
-      </div>
+      </section>
 
       {/* Team composition: Current Members + Add Staff, grouped before project allocation workflows */}
       <div className="grid gap-6 lg:grid-cols-2">

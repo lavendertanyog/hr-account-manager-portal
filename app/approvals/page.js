@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { useConfirm } from '../ConfirmDialog';
 
@@ -35,8 +36,17 @@ function EventBadge({ type }) {
   return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${map[type] || 'bg-gray-100 text-gray-600'}`}>{label}</span>;
 }
 
-export default function ApprovalsPage() {
+const TAB_IDS = ['ALLOCATION', 'BUDGET', 'STAFF', 'HISTORY'];
+
+function ApprovalsContent() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState('ALLOCATION'); // ALLOCATION | BUDGET | STAFF | HISTORY
+  // ?tab=ALLOCATION|BUDGET|STAFF|HISTORY opens that tab (used by the top bar's notifications).
+  // Watched, not just read once, so it also switches tab while already on this page.
+  const tabParam = searchParams.get('tab');
+  useEffect(() => {
+    if (TAB_IDS.includes(tabParam)) setActiveTab(tabParam);
+  }, [tabParam]);
   const [managerId, setManagerId] = useState('');
 
   const [allocations, setAllocations] = useState([]);
@@ -511,5 +521,13 @@ export default function ApprovalsPage() {
 
       {confirmDialog}
     </div>
+  );
+}
+
+export default function ApprovalsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-slate-400 text-sm">Loading…</div>}>
+      <ApprovalsContent />
+    </Suspense>
   );
 }
