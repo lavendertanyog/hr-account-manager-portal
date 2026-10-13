@@ -5,6 +5,9 @@ export const WHATS_NEW = [
     id: 4,
     date: '12 Oct 2026',
     title: 'Budget requests and approvals',
+    icon: "shield",
+    summary: "Your own projects only, plus tidier approval screens",
+    chips: ['Your projects only','Final approval limited','Reject needs a reason'],
     body: 'You now see and approve budget requests only for your own projects, and a few approval screens were tidied up.',
     points: [
       { icon: "filter", lead: "Budget Requests", text: "lists requests for projects you are the Account Manager of" },
@@ -18,6 +21,9 @@ export const WHATS_NEW = [
     id: 3,
     date: '12 Oct 2026',
     title: 'Reports PDF',
+    icon: "file",
+    summary: "A new page per section, budget bars, and adaptive supporting detail",
+    chips: ['Page per section','Budget bars','Adaptive detail'],
     body: 'The PDF report is easier to read and to hand on.',
     points: [
       { icon: "file", lead: "Each section", text: "starts on a new page" },
@@ -29,6 +35,9 @@ export const WHATS_NEW = [
     id: 2,
     date: '12 Oct 2026',
     title: 'My Projects and company calendar',
+    icon: "folder",
+    summary: "Project cards, Deployed and Maintenance, and who is on leave",
+    chips: ['Project cards','Deployed and Maintenance','Company calendar'],
     body: 'Browse your projects as cards, and see who is on leave.',
     points: [
       { icon: "folder", lead: "My Projects", text: "shows project cards with a detail drawer" },
@@ -40,6 +49,9 @@ export const WHATS_NEW = [
     id: 1,
     date: '12 Oct 2026',
     title: 'Remember me on this device',
+    icon: "signin",
+    summary: "Stay signed in on this device for 30 days",
+    chips: ['30 days','Remembered devices','Not you?'],
     body: 'Tick "Remember me on this device" when you log in and you’ll stay signed in on that browser for 30 days. Next time, the portal signs you straight in without your password. You’ll be asked to log in once after this update.',
     points: [
       { icon: "signin", lead: "Log out", text: "ends the sign-in but keeps your email filled in, partly hidden" },
