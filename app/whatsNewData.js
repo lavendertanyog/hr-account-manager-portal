@@ -1,9 +1,11 @@
 // What's New feed — plain-language, user-facing entries only (no internal bug/ticket
 // jargon). Newest first. `id` just needs to increase; it's what "seen" is tracked against.
+// `version` labels the release an entry shipped in (1.0, 1.1, …); entries of one release share it.
 export const WHATS_NEW = [
   {
     id: 4,
     date: '12 Oct 2026',
+    version: '1.1',
     title: 'Budget requests and approvals',
     summary: "Your own projects only, plus tidier approval screens",
     chips: ['Your projects only','Final approval limited','Reject needs a reason'],
@@ -19,6 +21,7 @@ export const WHATS_NEW = [
   {
     id: 3,
     date: '12 Oct 2026',
+    version: '1.1',
     title: 'Reports PDF',
     summary: "A new page per section, budget bars, and adaptive supporting detail",
     chips: ['Page per section','Budget bars','Adaptive detail'],
@@ -32,6 +35,7 @@ export const WHATS_NEW = [
   {
     id: 2,
     date: '12 Oct 2026',
+    version: '1.1',
     title: 'My Projects and company calendar',
     summary: "Project cards, Deployed and Maintenance, and who is on leave",
     chips: ['Project cards','Deployed and Maintenance','Company calendar'],
@@ -45,6 +49,7 @@ export const WHATS_NEW = [
   {
     id: 1,
     date: '12 Oct 2026',
+    version: '1.1',
     title: 'Remember me on this device',
     summary: "Stay signed in on this device for 30 days",
     chips: ['30 days','Remembered devices','Not you?'],
