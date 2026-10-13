@@ -58,3 +58,11 @@ body {
 .page-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #1a3a8f;
 }
+
+/* Hides the native scrollbar on elements that still scroll (the sidebar rail). */
+.hide-native-scrollbar {
+  scrollbar-width: none;
+}
+.hide-native-scrollbar::-webkit-scrollbar {
+  display: none;
+}
