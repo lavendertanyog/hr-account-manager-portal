@@ -7,11 +7,11 @@ export const WHATS_NEW = [
     title: 'Budget requests and approvals',
     body: 'You now see and approve budget requests only for your own projects, and a few approval screens were tidied up.',
     points: [
-      'Budget Requests lists requests for projects you are the Account Manager of',
-      'You can no longer give final approval to another project’s request',
-      'Rejecting an allocation on the Dashboard now asks for a reason, the same as on Approvals, and the staff member receives it',
-      'Bulk Approve asks in a proper window instead of a browser pop-up',
-      'Removing someone from your team or a project now asks you first',
+      { icon: "filter", lead: "Budget Requests", text: "lists requests for projects you are the Account Manager of" },
+      { icon: "shield", lead: "You can no longer give", text: "final approval to another project’s request" },
+      { icon: "message", lead: "Rejecting an allocation", text: "on the Dashboard now asks for a reason, the same as on Approvals, and the staff member receives it" },
+      { icon: "window", lead: "Bulk Approve", text: "asks in a proper window instead of a browser pop-up" },
+      { icon: "users", lead: "Removing someone", text: "from your team or a project now asks you first" },
     ],
   },
   {
@@ -20,9 +20,9 @@ export const WHATS_NEW = [
     title: 'Reports PDF',
     body: 'The PDF report is easier to read and to hand on.',
     points: [
-      'Each section starts on a new page',
-      'Budget utilisation is shown as bars',
-      'Supporting detail adapts to the period: a week, a month, or several months',
+      { icon: "file", lead: "Each section", text: "starts on a new page" },
+      { icon: "chart", lead: "Budget utilisation", text: "is shown as bars" },
+      { icon: "calendar", lead: "Supporting detail", text: "adapts to the period: a week, a month, or several months" },
     ],
   },
   {
@@ -31,9 +31,9 @@ export const WHATS_NEW = [
     title: 'My Projects and company calendar',
     body: 'Browse your projects as cards, and see who is on leave.',
     points: [
-      'My Projects shows project cards with a detail drawer',
-      'Projects can now be Deployed or in Maintenance, and show that status',
-      'New Calendar page in the sidebar shows approved leave by name, in Month or List view, plus public holidays (leave type and reason stay private)',
+      { icon: "folder", lead: "My Projects", text: "shows project cards with a detail drawer" },
+      { icon: "check", lead: "Projects", text: "can now be Deployed or in Maintenance, and show that status" },
+      { icon: "calendar", lead: "New Calendar page", text: "in the sidebar shows approved leave by name, in Month or List view, plus public holidays (leave type and reason stay private)" },
     ],
   },
   {
@@ -42,11 +42,11 @@ export const WHATS_NEW = [
     title: 'Remember me on this device',
     body: 'Tick "Remember me on this device" when you log in and you’ll stay signed in on that browser for 30 days. Next time, the portal signs you straight in without your password. You’ll be asked to log in once after this update.',
     points: [
-      'Log out ends the sign-in but keeps your email filled in, partly hidden',
-      'Click "Not you?" on the login page to forget the email and use a different account',
-      'See and sign out your remembered devices from your Profile page',
-      'Changing your password signs out your other devices',
-      'Don’t tick it on a shared or public computer',
+      { icon: "signin", lead: "Log out", text: "ends the sign-in but keeps your email filled in, partly hidden" },
+      { icon: "users", lead: "Click \"Not you?\"", text: "on the login page to forget the email and use a different account" },
+      { icon: "list", lead: "See and sign out", text: "your remembered devices from your Profile page" },
+      { icon: "lock", lead: "Changing your password", text: "signs out your other devices" },
+      { icon: "shield", lead: "Don’t tick it", text: "on a shared or public computer" },
     ],
   },
 ];
