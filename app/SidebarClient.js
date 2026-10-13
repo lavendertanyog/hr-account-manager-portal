@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { authHeaders, endSession } from './authSession';
-import { WHATS_NEW_LATEST_ID, WHATS_NEW_SEEN_KEY } from './whatsNewData';
 
 function deriveNameFromEmail(email) {
   return String(email || '')
@@ -46,28 +45,13 @@ function NavIcon({ name, size = 20 }) {
 // Module-level: resets on every full page reload.
 let _am_lastVerified = 0;
 
-export default function SidebarClient({ isDrawer = false, onClose }) {
+export default function SidebarClient({ isDrawer = false, onClose, collapsed = false }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoMissing, setLogoMissing] = useState(false);
-  // Desktop rail can collapse to icons only; the choice is remembered in this browser.
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return typeof window !== 'undefined' && localStorage.getItem('sidebar_collapsed') === '1'; } catch { return false; }
-  });
-  const toggleCollapsed = () => setCollapsed((c) => {
-    const next = !c;
-    try { localStorage.setItem('sidebar_collapsed', next ? '1' : '0'); } catch {}
-    return next;
-  });
   const menuRef = useRef(null);
-  // Red dot on Settings until the latest What's New entry has been opened (remembered per browser).
-  const [seenId, setSeenId] = useState(WHATS_NEW_LATEST_ID);
-  useEffect(() => {
-    try { setSeenId(Number(localStorage.getItem(WHATS_NEW_SEEN_KEY)) || 0); } catch {}
-  }, [pathname]);
-  const hasUnseen = seenId < WHATS_NEW_LATEST_ID;
 
   useEffect(() => {
     try {
@@ -176,14 +160,6 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
           })}
         </nav>
 
-        <div className="px-3 pt-3">
-          <Link href="/whats-new" className="flex items-center justify-between rounded-2xl text-sm font-medium transition-colors"
-            style={{ padding: '13px 18px', background: pathname.startsWith('/whats-new') ? '#e8edf8' : 'white', color: pathname.startsWith('/whats-new') ? '#1a3a8f' : '#374151' }}>
-            What&apos;s new
-            {hasUnseen && <span className="w-2 h-2 rounded-full bg-red-500" aria-label="New updates" />}
-          </Link>
-        </div>
-
         <div className="px-3 pb-5 pt-3" style={{ borderTop: '1px solid #f0f0f0' }}>
           <div className="flex items-center gap-3 rounded-2xl" style={{ background: '#f5f7fc', padding: '12px 14px' }}>
             <Link href="/profile" className="flex items-center gap-3 flex-1 overflow-hidden" title="View profile">
@@ -225,19 +201,6 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
         className="flex flex-col"
         style={{ position: 'fixed', top: MARGIN, bottom: MARGIN, left: MARGIN, width: RAIL_W, transition: 'width 200ms ease', zIndex: 30 }}
       >
-        {/* Collapse / expand the rail (icons only when collapsed) — remembered per browser */}
-        <button type="button" onClick={toggleCollapsed}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-expanded={!collapsed}
-          className="absolute flex items-center justify-center rounded-lg text-[#aab8e0] transition hover:bg-white/10 hover:text-white"
-          style={{ top: 12, right: collapsed ? (RAIL_W - 32) / 2 : 8, width: 32, height: 32, zIndex: 31 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            aria-hidden="true" style={{ transform: collapsed ? 'scaleX(-1)' : 'none', transition: 'transform 200ms ease' }}>
-            <line x1="11" y1="6" x2="21" y2="6" /><line x1="11" y1="12" x2="21" y2="12" /><line x1="11" y1="18" x2="21" y2="18" /><polyline points="7 8 3 12 7 16" />
-          </svg>
-        </button>
-
         {/* Logo */}
         <div className="flex items-center justify-center" style={{ paddingTop: collapsed ? 28 : 50, paddingBottom: 4 }}>
           {collapsed ? (
@@ -286,7 +249,6 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
                 background: '#f0c9dc', color: '#16307a', border: 'none', cursor: 'pointer',
               }}>
               <NavIcon name="settings" size={18} />
-              {hasUnseen && <span className="absolute w-2 h-2 rounded-full bg-red-500" style={{ top: 10, right: collapsed ? 8 : 14 }} aria-hidden="true" />}
             </button>
           </div>
           {menuOpen && (
@@ -298,15 +260,6 @@ export default function SidebarClient({ isDrawer = false, onClose }) {
               </div>
               <Link href="/profile" onClick={() => setMenuOpen(false)}
                 className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Profile</Link>
-              <Link href="/whats-new" onClick={() => {
-                setMenuOpen(false);
-                try { localStorage.setItem(WHATS_NEW_SEEN_KEY, String(WHATS_NEW_LATEST_ID)); } catch {}
-                setSeenId(WHATS_NEW_LATEST_ID);
-              }}
-                className="flex items-center justify-between px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                What&apos;s new
-                {hasUnseen && <span className="w-2 h-2 rounded-full bg-red-500" aria-label="New updates" />}
-              </Link>
               <button type="button" onClick={handleLogout}
                 className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Log out</button>
             </div>
