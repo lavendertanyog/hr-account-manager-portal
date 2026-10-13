@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import SidebarClient from './SidebarClient';
+import UpdateNotice from './UpdateNotice';
 
 const SIDEBAR_PATH_PREFIXES = ['/dashboard', '/my-projects', '/team', '/approvals', '/progress', '/reports', '/calendar', '/profile', '/whats-new'];
 const MOBILE_MEDIA_QUERY = '(max-width: 860px)';
@@ -59,6 +60,8 @@ export default function AppShell({ children }) {
       {(!isMobile || sidebarOpen) && (
         <SidebarClient isDrawer={isMobile} onClose={() => setSidebarOpen(false)} />
       )}
+
+      <UpdateNotice sessionKey="am_portal_user" />
 
       <main
         className="flex-1 flex flex-col"

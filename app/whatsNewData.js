@@ -52,3 +52,14 @@ export const WHATS_NEW = [
 ];
 export const WHATS_NEW_LATEST_ID = WHATS_NEW[0].id;
 export const WHATS_NEW_SEEN_KEY = 'am_portal_whats_new_seen';
+
+// Short summary shown in the one-time update notice after login (see UpdateNotice.js). Keep it to
+// three lines and update it with each release; the full list stays in WHATS_NEW above.
+export const WHATS_NEW_NOTICE = {
+  portal: "Account Manager portal",
+  highlights: [
+    { icon: "check", lead: "Budget requests", text: "now show only your own projects" },
+    { icon: "chart", lead: "Reports PDF", text: "has a new page per section and budget bars" },
+    { icon: "calendar", lead: "Company calendar", text: "shows who is on leave" },
+  ],
+};
