@@ -300,11 +300,11 @@ export default function AccountManagerDashboard() {
         </svg>
         <div className="relative max-w-lg">
           <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#aab8e0]">{todayLabel || 'Account Manager Dashboard'}</p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-tight">{greeting}, {firstName}</h1>
+          <h1 className="mt-3 text-4xl font-extrabold tracking-tight">{t(greeting)}, {firstName}</h1>
           <p className="mt-3 text-sm text-[#d6def5]">
             {loading ? t("Checking for requests…")
               : totalPending === 0 ? t("You’re all caught up. Nothing is waiting for your approval.")
-                : t("{totalPending} {v} waiting for your approval.", { totalPending: totalPending, v: totalPending === 1 ? 'item is' : 'items are' })}
+                : (totalPending === 1 ? t("1 item is waiting for your approval.") : t("{totalPending} items are waiting for your approval.", { totalPending: totalPending }))}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button type="button"
