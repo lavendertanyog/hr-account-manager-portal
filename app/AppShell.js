@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import SidebarClient from './SidebarClient';
 import UpdateNotice from './UpdateNotice';
+import LanguageWelcome from './i18n/LanguageWelcome';
 import TopBar from './TopBar';
 
 const SIDEBAR_PATH_PREFIXES = ['/dashboard', '/my-projects', '/team', '/approvals', '/progress', '/reports', '/calendar', '/profile', '/whats-new'];
@@ -70,6 +71,7 @@ export default function AppShell({ children }) {
         <SidebarClient isDrawer={isMobile} onClose={() => setSidebarOpen(false)} collapsed={collapsed} />
       )}
 
+      <LanguageWelcome />
       <UpdateNotice sessionKey="am_portal_user" />
 
       <main

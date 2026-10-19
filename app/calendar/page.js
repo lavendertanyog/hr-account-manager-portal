@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TeamCalendar from './TeamCalendar';
+import { useT } from '../i18n/LanguageProvider';
 
 export default function CalendarPage() {
+  const { t } = useT();
   const router = useRouter();
   const [user, setUser] = useState(null);
   const backendBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hr-backend-qjww.onrender.com';
@@ -20,8 +22,8 @@ export default function CalendarPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="mt-2 text-4xl font-semibold text-slate-950">Calendar</h1>
-        <p className="mt-1 text-sm text-slate-500">Public holidays and who&apos;s on leave across the company.</p>
+        <h1 className="mt-2 text-4xl font-semibold text-slate-950">{t("Calendar")}</h1>
+        <p className="mt-1 text-sm text-slate-500">{t("Public holidays and who's on leave across the company.")}</p>
       </div>
       {user && <TeamCalendar backendBaseUrl={backendBaseUrl} sessionUser={user} />}
     </div>

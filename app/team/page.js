@@ -3,15 +3,17 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { useConfirm } from '../ConfirmDialog';
+import { useT, getLocale } from '../i18n/LanguageProvider';
 
 function formatDt(dt) {
   if (!dt) return 'ACTIVE';
   // timeZone pinned explicitly so this always reads correctly regardless of the viewer's own
   // device timezone (see AttendanceReminders.js for the class of bug this avoids).
-  return new Date(dt).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Singapore' });
+  return new Date(dt).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Singapore' });
 }
 
 function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
+  const { t } = useT();
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -28,7 +30,7 @@ function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
   const selectedUsers = users.filter((u) => selected.includes(u.user_id));
   return (
     <div ref={ref} className="relative">
-      <label className="block text-sm font-semibold text-slate-700 mb-1">{label}</label>
+      <label className="block text-sm font-semibold text-slate-700 mb-1">{t(label)}</label>
       {selectedUsers.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {selectedUsers.map((u) => (
@@ -51,7 +53,7 @@ function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
       </div>
       {open && (
         <div className="absolute z-50 mt-1 max-h-52 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
-          {filtered.length === 0 ? <p className="px-4 py-3 text-sm text-slate-400">No results</p>
+          {filtered.length === 0 ? <p className="px-4 py-3 text-sm text-slate-400">{t("No results")}</p>
             : filtered.map((u) => {
               const sel = selected.includes(u.user_id);
               return (
@@ -70,6 +72,7 @@ function UserMultiSelect({ label, placeholder, users, selected, onChange }) {
 }
 
 export default function TeamPage() {
+  const { t } = useT();
   const [managerId, setManagerId] = useState('');
   const [allStaff, setAllStaff] = useState([]);
   const [myTeam, setMyTeam] = useState([]);
@@ -155,8 +158,8 @@ export default function TeamPage() {
 
   const handleRemoveFromTeam = async (staff) => {
     const confirmed = await confirm({
-      title: 'Remove from team',
-      message: `Remove ${staff.full_name} from your team? They will no longer report to you.`,
+      title: t("Remove from team"),
+      message: t("Remove {full_name} from your team? They will no longer report to you.", { full_name: staff.full_name }),
       confirmLabel: 'Remove',
       danger: true,
     });
@@ -189,8 +192,8 @@ export default function TeamPage() {
 
   const handleUnassignProject = async (userId, projectCode) => {
     const confirmed = await confirm({
-      title: 'Remove project assignment',
-      message: `Remove the ${projectCode} project assignment for this staff member?`,
+      title: t("Remove project assignment"),
+      message: t("Remove the {projectCode} project assignment for this staff member?", { projectCode: projectCode }),
       confirmLabel: 'Remove',
       danger: true,
     });
@@ -210,22 +213,22 @@ export default function TeamPage() {
   return (
     <div className="p-8 space-y-10">
       <div>
-        <h1 className="mt-2 text-4xl font-semibold text-slate-950">Team Management</h1>
-        <p className="mt-1 text-sm text-slate-500">Manage your direct reports and assign staff to projects.</p>
+        <h1 className="mt-2 text-4xl font-semibold text-slate-950">{t("Team Management")}</h1>
+        <p className="mt-1 text-sm text-slate-500">{t("Manage your direct reports and assign staff to projects.")}</p>
       </div>
 
       {/* Projects this manager/AM is in charge of, as assigned by HR */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">You Are In Charge Of</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">{t("You Are In Charge Of")}</p>
         {myProjects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase())).length === 0 ? (
-          <p className="text-sm text-slate-400 italic">No projects assigned to you yet. Contact HR to be assigned as manager or account manager on a project.</p>
+          <p className="text-sm text-slate-400 italic">{t("No projects assigned to you yet. Contact HR to be assigned as manager or account manager on a project.")}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {myProjects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase())).map((p) => (
               <span key={p.project_code}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#E8EEFF] px-3 py-1.5 text-xs font-semibold text-[#1540A8]">
                 {p.project_code} — {p.project_name}
-                <span className="opacity-60">· {p.my_role === 'account_manager' ? 'AM' : 'Manager'}</span>
+                <span className="opacity-60">· {p.my_role === 'account_manager' ? t("AM") : t("Manager")}</span>
               </span>
             ))}
           </div>
@@ -238,8 +241,8 @@ export default function TeamPage() {
         {/* Current Members card */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-slate-950">Current Members</h2>
-            <p className="text-sm text-slate-500 mt-0.5">View and remove direct reports from your team.</p>
+            <h2 className="text-xl font-semibold text-slate-950">{t("Current Members")}</h2>
+            <p className="text-sm text-slate-500 mt-0.5">{t("View and remove direct reports from your team.")}</p>
           </div>
 
           {teamMsg && (
@@ -247,19 +250,19 @@ export default function TeamPage() {
           )}
 
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{myTeam.length} member{myTeam.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{t("{length} member", { length: myTeam.length })}{myTeam.length !== 1 ? 's' : ''}</p>
             <div className="relative">
               <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
-              <input type="text" placeholder="Search..." value={teamSearch}
+              <input type="text" placeholder={t("Search...")} value={teamSearch}
                 onChange={(e) => setTeamSearch(e.target.value)}
                 className="rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
               />
             </div>
           </div>
-          {loading ? <p className="text-sm text-slate-500">Loading...</p>
-            : myTeam.length === 0 ? <p className="text-sm text-slate-400 italic">No staff linked yet.</p>
+          {loading ? <p className="text-sm text-slate-500">{t("Loading...")}</p>
+            : myTeam.length === 0 ? <p className="text-sm text-slate-400 italic">{t("No staff linked yet.")}</p>
             : (
               <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden max-h-64 overflow-y-auto">
                 {myTeam.filter((s) => {
@@ -272,9 +275,7 @@ export default function TeamPage() {
                       <p className="text-xs text-slate-400">{s.email}</p>
                     </div>
                     <button onClick={() => handleRemoveFromTeam(s)}
-                      className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 shrink-0">
-                      Remove
-                    </button>
+                      className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 shrink-0">{t("Remove")}</button>
                   </div>
                 ))}
               </div>
@@ -284,8 +285,8 @@ export default function TeamPage() {
         {/* Add Staff card */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col">
           <div className="mb-4">
-            <h2 className="text-xl font-semibold text-slate-950">Add Staff</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Link unassigned staff members to your team.</p>
+            <h2 className="text-xl font-semibold text-slate-950">{t("Add Staff")}</h2>
+            <p className="text-sm text-slate-500 mt-0.5">{t("Link unassigned staff members to your team.")}</p>
           </div>
           {teamMsg && (
             <p className={`mb-3 text-sm font-medium ${teamMsg.includes('Failed') || teamMsg.includes('Select') || teamMsg.includes('failed') ? 'text-red-500' : 'text-green-600'}`}>{teamMsg}</p>
@@ -294,7 +295,7 @@ export default function TeamPage() {
             <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <input type="text" placeholder="Search unlinked staff..." value={addSearch}
+            <input type="text" placeholder={t("Search unlinked staff...")} value={addSearch}
               onChange={(e) => setAddSearch(e.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -314,27 +315,27 @@ export default function TeamPage() {
                 </button>
               );
             })}
-            {unlinkedStaff.length === 0 && <p className="text-xs text-slate-400 col-span-full">All staff are in your team.</p>}
+            {unlinkedStaff.length === 0 && <p className="text-xs text-slate-400 col-span-full">{t("All staff are in your team.")}</p>}
           </div>
           <button onClick={handleAddToTeam} disabled={teamSubmitting || selectedAddIds.length === 0}
             className="mt-auto rounded-2xl bg-[#1540A8] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-            {teamSubmitting ? 'Saving...' : `Add ${selectedAddIds.length > 0 ? selectedAddIds.length + ' ' : ''}Selected`}
+            {teamSubmitting ? t("Saving...") : t("Add {v}Selected", { v: selectedAddIds.length > 0 ? selectedAddIds.length + ' ' : '' })}
           </button>
         </section>
       </div>
 
       {/* Project allocation workflows: assign staff to project codes + review current assignments */}
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-950 mb-1">Assign Staff to Project</h2>
-        <p className="text-sm text-slate-500 mb-4">Assign one or more staff members to a project code.</p>
+        <h2 className="text-xl font-semibold text-slate-950 mb-1">{t("Assign Staff to Project")}</h2>
+        <p className="text-sm text-slate-500 mb-4">{t("Assign one or more staff members to a project code.")}</p>
         <form onSubmit={handleAssignStaff} className="space-y-4 max-w-lg">
-          <UserMultiSelect label="Staff Members" placeholder="Search staff by name or email..."
+          <UserMultiSelect label={t("Staff Members")} placeholder={t("Search staff by name or email...")}
             users={allStaff} selected={selectedStaffIds} onChange={setSelectedStaffIds} />
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Project Code</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">{t("Project Code")}</label>
             <select value={assignProjectCode} onChange={(e) => setAssignProjectCode(e.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Select a project code</option>
+              <option value="">{t("Select a project code")}</option>
               {projects.filter((p) => !['INACTIVE', 'DEPLOYED'].includes((p.status || 'ACTIVE').toUpperCase())).map((p) => (
                 <option key={p.project_code} value={p.project_code}>{p.project_code} — {p.project_name}</option>
               ))}
@@ -345,20 +346,20 @@ export default function TeamPage() {
           )}
           <button type="submit" disabled={assignLoading}
             className="rounded-2xl bg-[#1540A8] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">
-            {assignLoading ? 'Assigning...' : 'Assign Project'}
+            {assignLoading ? t("Assigning...") : t("Assign Project")}
           </button>
         </form>
       </section>
 
       {/* Staff–Project Assignment Analysis */}
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-950 mb-1">Staff Project Assignments</h2>
-        <p className="text-sm text-slate-500 mb-4">Overview of which staff member is assigned to which project code. Click × to remove an assignment.</p>
+        <h2 className="text-xl font-semibold text-slate-950 mb-1">{t("Staff Project Assignments")}</h2>
+        <p className="text-sm text-slate-500 mb-4">{t("Overview of which staff member is assigned to which project code. Click × to remove an assignment.")}</p>
         {unassignFeedback && (
           <p className={`mb-3 text-sm font-medium ${unassignFeedback.includes('Removed') ? 'text-green-600' : 'text-red-500'}`}>{unassignFeedback}</p>
         )}
         {teamAssignments.length === 0 ? (
-          <p className="text-sm text-slate-500">No project assignments found for your team.</p>
+          <p className="text-sm text-slate-500">{t("No project assignments found for your team.")}</p>
         ) : (() => {
           // Group by staff member
           const byStaff = {};
@@ -387,7 +388,7 @@ export default function TeamPage() {
                     </div>
                   </div>
                   {staff.projects.length === 0 ? (
-                    <p className="text-xs text-slate-400 ml-11 italic">No project assignments</p>
+                    <p className="text-xs text-slate-400 ml-11 italic">{t("No project assignments")}</p>
                   ) : (
                     <div className="ml-11 flex flex-wrap gap-2">
                       {staff.projects.map((p) => (
@@ -398,7 +399,7 @@ export default function TeamPage() {
                           {p.progress != null && <span className="opacity-70">· {p.progress}%</span>}
                           <button type="button"
                             onClick={() => handleUnassignProject(staff.userId, p.code)}
-                            title={`Remove ${p.code} assignment`}
+                            title={t("Remove {code} assignment", { code: p.code })}
                             className="ml-0.5 hover:text-red-500 font-bold leading-none">×</button>
                         </span>
                       ))}

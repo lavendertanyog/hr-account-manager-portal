@@ -16,6 +16,7 @@ const PROJECT_STATUS_PILL = {
   MAINTENANCE: 'bg-amber-100 text-amber-700',
 };
 import { useRouter } from 'next/navigation';
+import { useT } from '../i18n/LanguageProvider';
 
 const isAutoEntry = (summary) => String(summary || '').startsWith('Auto-progress baseline');
 
@@ -30,6 +31,7 @@ function formatSummary(log) {
 }
 
 export default function ProjectCodesPage() {
+  const { t } = useT();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   const [projects, setProjects] = useState([]);
@@ -137,13 +139,13 @@ export default function ProjectCodesPage() {
     URL.revokeObjectURL(url);
   };
 
-  if (!authChecked) return <div className="p-8 text-slate-500">Loading...</div>;
+  if (!authChecked) return <div className="p-8 text-slate-500">{t("Loading...")}</div>;
 
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="mt-2 text-4xl font-semibold text-slate-950">Progress</h1>
-        <p className="mt-1 text-sm text-slate-500">Active project codes and team progress logs.</p>
+        <h1 className="mt-2 text-4xl font-semibold text-slate-950">{t("Progress")}</h1>
+        <p className="mt-1 text-sm text-slate-500">{t("Active project codes and team progress logs.")}</p>
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm mb-10 overflow-hidden">
@@ -154,7 +156,7 @@ export default function ProjectCodesPage() {
               className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
                 projectStatusFilter === f ? 'bg-[#1540A8] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}>
-              {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
+              {f === 'ALL' ? t("All") : f.charAt(0) + f.slice(1).toLowerCase()}
             </button>
           ))}
           <div className="relative">
@@ -165,34 +167,32 @@ export default function ProjectCodesPage() {
               type="text"
               value={projectSearch}
               onChange={(e) => setProjectSearch(e.target.value)}
-              placeholder="Search code, name or manager..."
+              placeholder={t("Search code, name or manager...")}
               className="rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
             />
           </div>
           {(projectStatusFilter !== 'ALL' || projectSearch) && (
             <button onClick={resetProjectFilters}
-              className="rounded-2xl border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50">
-              Reset Filters
-            </button>
+              className="rounded-2xl border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50">{t("Reset Filters")}</button>
           )}
         </div>
         <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-[0.22em] text-[0.70rem]">
             <tr>
-              <th className="px-6 py-4">Code ID</th>
-              <th className="px-6 py-4">Project Name</th>
-              <th className="px-6 py-4">Hours</th>
-              <th className="px-6 py-4">Utilization</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4">Manager</th>
+              <th className="px-6 py-4">{t("Code ID")}</th>
+              <th className="px-6 py-4">{t("Project Name")}</th>
+              <th className="px-6 py-4">{t("Hours")}</th>
+              <th className="px-6 py-4">{t("Utilization")}</th>
+              <th className="px-6 py-4">{t("Status")}</th>
+              <th className="px-6 py-4">{t("Manager")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Loading project codes...</td></tr>
+              <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">{t("Loading project codes...")}</td></tr>
             ) : (() => {
-              if (filteredProjects.length === 0) return <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">No project codes found.</td></tr>;
+              if (filteredProjects.length === 0) return <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">{t("No project codes found.")}</td></tr>;
               const totalPages = Math.max(1, Math.ceil(filteredProjects.length / 6));
               const safePage = Math.min(projectPage, totalPages);
               const start = (safePage - 1) * 6;
@@ -208,7 +208,7 @@ export default function ProjectCodesPage() {
                       <tr key={project.project_code} className="hover:bg-slate-50">
                         <td className="px-6 py-4 font-semibold text-slate-900">{project.project_code}</td>
                         <td className="px-6 py-4 text-slate-700">{project.project_name}</td>
-                        <td className="px-6 py-4 text-slate-700">{hours} hrs</td>
+                        <td className="px-6 py-4 text-slate-700">{t("{hours} hrs", { hours: hours })}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <div className="w-20 h-2 rounded-full bg-slate-200 overflow-hidden">
@@ -227,12 +227,12 @@ export default function ProjectCodesPage() {
                   {totalPages > 1 && (
                     <tr><td colSpan={6} className="px-6 py-3 bg-slate-50">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Showing {start + 1}–{Math.min(start + 6, filteredProjects.length)} of {filteredProjects.length}</span>
+                        <span className="text-xs text-slate-500">{t("Showing {v}–{v2} of {length}", { v: start + 1, v2: Math.min(start + 6, filteredProjects.length), length: filteredProjects.length })}</span>
                         <div className="flex gap-2">
                           <button onClick={() => setProjectPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-                            className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">Prev</button>
+                            className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">{t("Prev")}</button>
                           <button onClick={() => setProjectPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                            className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">Next</button>
+                            className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">{t("Next")}</button>
                         </div>
                       </div>
                     </td></tr>
@@ -248,8 +248,8 @@ export default function ProjectCodesPage() {
       {/* Progress Logs section */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5">
-          <h2 className="text-2xl font-semibold text-slate-950">Progress Logs</h2>
-          <p className="mt-1 text-sm text-slate-500">Team progress submissions — filter and export as needed.</p>
+          <h2 className="text-2xl font-semibold text-slate-950">{t("Progress Logs")}</h2>
+          <p className="mt-1 text-sm text-slate-500">{t("Team progress submissions — filter and export as needed.")}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -263,48 +263,44 @@ export default function ProjectCodesPage() {
             type="text"
             value={filterName}
             onChange={(e) => setFilterName(e.target.value)}
-            placeholder="Filter by staff name..."
+            placeholder={t("Filter by staff name...")}
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
           />
           <input
             type="text"
             value={filterCode}
             onChange={(e) => setFilterCode(e.target.value)}
-            placeholder="Filter by project code..."
+            placeholder={t("Filter by project code...")}
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
           />
           {(filterDate || filterName || filterCode) && (
             <button
               onClick={() => { setFilterDate(''); setFilterName(''); setFilterCode(''); setLogsPage(1); }}
               className="rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-500 hover:bg-slate-50"
-            >
-              Reset Filters
-            </button>
+            >{t("Reset Filters")}</button>
           )}
           <button
             onClick={exportCSV}
             className="ml-auto rounded-2xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-          >
-            Export CSV
-          </button>
+          >{t("Export CSV")}</button>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-[0.22em] text-[0.70rem]">
               <tr>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Staff Name</th>
-                <th className="px-6 py-4">Project Code</th>
-                <th className="px-6 py-4">Completion %</th>
-                <th className="px-6 py-4">Summary</th>
+                <th className="px-6 py-4">{t("Date")}</th>
+                <th className="px-6 py-4">{t("Staff Name")}</th>
+                <th className="px-6 py-4">{t("Project Code")}</th>
+                <th className="px-6 py-4">{t("Completion %")}</th>
+                <th className="px-6 py-4">{t("Summary")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {logsLoading ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Loading progress logs...</td></tr>
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">{t("Loading progress logs...")}</td></tr>
               ) : filteredLogs.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No progress logs found.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">{t("No progress logs found.")}</td></tr>
               ) : (() => {
                 const totalPages = Math.max(1, Math.ceil(filteredLogs.length / 6));
                 const safePage = Math.min(logsPage, totalPages);
@@ -333,12 +329,12 @@ export default function ProjectCodesPage() {
                     {totalPages > 1 && (
                       <tr><td colSpan={5} className="px-6 py-3 bg-slate-50">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">Showing {start + 1}–{Math.min(start + 6, filteredLogs.length)} of {filteredLogs.length}</span>
+                          <span className="text-xs text-slate-500">{t("Showing {v}–{v2} of {length}", { v: start + 1, v2: Math.min(start + 6, filteredLogs.length), length: filteredLogs.length })}</span>
                           <div className="flex gap-2">
                             <button onClick={() => setLogsPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-                              className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">Prev</button>
+                              className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">{t("Prev")}</button>
                             <button onClick={() => setLogsPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                              className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">Next</button>
+                              className="rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-100">{t("Next")}</button>
                           </div>
                         </div>
                       </td></tr>

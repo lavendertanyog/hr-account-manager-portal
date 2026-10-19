@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { useConfirm } from '../ConfirmDialog';
+import { useT, getLocale } from '../i18n/LanguageProvider';
 
 function formatDateOnly(d) {
   if (!d) return '—';
@@ -26,16 +27,18 @@ function statusBadge(status) {
 }
 
 function EventBadge({ type }) {
+  const { t } = useT();
   const map = {
     ALLOCATION: 'bg-blue-50 text-blue-700',
     BUDGET: 'bg-purple-50 text-purple-700',
     STAFF: 'bg-emerald-50 text-emerald-700',
   };
   const label = { ALLOCATION: 'Allocation', BUDGET: 'Budget Request', STAFF: 'Staff Registration' }[type] || type;
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${map[type] || 'bg-gray-100 text-gray-600'}`}>{label}</span>;
+  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${map[type] || 'bg-gray-100 text-gray-600'}`}>{t(label)}</span>;
 }
 
 export default function ApprovalsPage() {
+  const { t } = useT();
   const [activeTab, setActiveTab] = useState('ALLOCATION'); // ALLOCATION | BUDGET | STAFF | HISTORY
   const [managerId, setManagerId] = useState('');
 
@@ -182,8 +185,8 @@ export default function ApprovalsPage() {
   const handleBulkApprove = async () => {
     if (selectedIds.length === 0) return;
     const confirmed = await confirm({
-      title: 'Bulk approve',
-      message: `Approve ${selectedIds.length} selected item(s)?`,
+      title: t("Bulk approve"),
+      message: t("Approve {length} selected item(s)?", { length: selectedIds.length }),
       confirmLabel: 'Approve',
     });
     if (!confirmed) return;
@@ -194,7 +197,7 @@ export default function ApprovalsPage() {
         else if (activeTab === 'BUDGET') await runBudgetReview(id, 'APPROVED');
         else await runStaffReview(id, 'APPROVED');
       }
-      showToast(`Approved ${selectedIds.length} item(s).`);
+      showToast(t("Approved {length} item(s).", { length: selectedIds.length }));
       setSelectedIds([]);
       if (activeTab === 'ALLOCATION') loadAllocations();
       else if (activeTab === 'BUDGET') loadBudgets();
@@ -211,7 +214,7 @@ export default function ApprovalsPage() {
     const allocRows = allocationHistory.map((item) => ({
       type: 'ALLOCATION',
       key: `alloc-${item.allocation_id}`,
-      description: `Allocation of ${formatHours(item.hours_per_week)} hrs/week for ${item.project_code}`,
+      description: t("Allocation of {v} hrs/week for {project_code}", { v: formatHours(item.hours_per_week), project_code: item.project_code }),
       target: item.project_code,
       actor: item.staff_name || item.staff_email || '—',
       status: item.account_manager_status === 'APPROVED' ? 'APPROVED' : 'REJECTED',
@@ -220,7 +223,7 @@ export default function ApprovalsPage() {
     const budgetRows = budgetHistory.map((item) => ({
       type: 'BUDGET',
       key: `budget-${item.request_id}`,
-      description: `Budget requested: ${formatHours(item.requested_hours)} hrs for ${item.project_name || item.project_code}`,
+      description: t("Budget requested: {v} hrs for {v2}", { v: formatHours(item.requested_hours), v2: item.project_name || item.project_code }),
       target: item.project_code,
       actor: item.requester_name || item.requester_email || '—',
       status: item.status === 'APPROVED' ? 'APPROVED' : 'REJECTED',
@@ -229,7 +232,7 @@ export default function ApprovalsPage() {
     const staffRows = staffHistory.map((item) => ({
       type: 'STAFF',
       key: `staff-${item.user_id}`,
-      description: `Staff registered: ${item.full_name}`,
+      description: t("Staff registered: {full_name}", { full_name: item.full_name }),
       target: '—',
       actor: item.full_name,
       status: item.account_status === 'active' ? 'APPROVED' : 'REJECTED',
@@ -255,23 +258,23 @@ export default function ApprovalsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="mt-2 text-4xl font-semibold text-slate-950">Approvals</h1>
-          <p className="mt-1 text-sm text-slate-500">Review outstanding allocations, budget requests, and staff registrations.</p>
+          <h1 className="mt-2 text-4xl font-semibold text-slate-950">{t("Approvals")}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t("Review outstanding allocations, budget requests, and staff registrations.")}</p>
         </div>
       </div>
 
       {/* Stat cards — click to jump to the matching tab below */}
       <div className="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {[
-          { key: 'ALLOCATION', label: 'Pending Allocations', value: allocations.length },
-          { key: 'BUDGET', label: 'Budget Requests', value: budgetRequests.length },
-          { key: 'STAFF', label: 'Staff Registrations', value: pendingStaff.length },
+          { key: 'ALLOCATION', label: t("Pending Allocations"), value: allocations.length },
+          { key: 'BUDGET', label: t("Budget Requests"), value: budgetRequests.length },
+          { key: 'STAFF', label: t("Staff Registrations"), value: pendingStaff.length },
         ].map((s) => (
           <button key={s.key} type="button" onClick={() => setActiveTab(s.key)}
             className={`text-left rounded-2xl border bg-white px-6 py-5 shadow-sm transition ${
               activeTab === s.key ? 'border-[#1a3a8f] ring-2 ring-[#1a3a8f]/30' : 'border-gray-100 hover:border-slate-300'
             }`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">{s.label}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">{t(s.label)}</p>
             <p className="mt-3 text-4xl font-semibold text-slate-900">{s.value}</p>
           </button>
         ))}
@@ -281,17 +284,17 @@ export default function ApprovalsPage() {
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
         <div className="flex flex-wrap gap-1 border-b border-gray-100 px-4 pt-4">
           {[
-            { id: 'ALLOCATION', label: `Allocations (${allocations.length})` },
-            { id: 'BUDGET', label: `Budget Requests (${budgetRequests.length})` },
-            { id: 'STAFF', label: `Staff Registrations (${pendingStaff.length})` },
-            { id: 'HISTORY', label: 'History' },
-          ].map((t) => (
+            { id: 'ALLOCATION', label: t("Allocations ({length})", { length: allocations.length }) },
+            { id: 'BUDGET', label: t("Budget Requests ({length})", { length: budgetRequests.length }) },
+            { id: 'STAFF', label: t("Staff Registrations ({length})", { length: pendingStaff.length }) },
+            { id: 'HISTORY', label: t("History") },
+          ].map((tabItem) => (
             <button
-              key={t.id}
-              className={`rounded-t-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === t.id ? 'bg-[#e8edf8] text-[#1a3a8f]' : 'text-slate-500 hover:text-slate-700'}`}
-              onClick={() => setActiveTab(t.id)}
+              key={tabItem.id}
+              className={`rounded-t-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === tabItem.id ? 'bg-[#e8edf8] text-[#1a3a8f]' : 'text-slate-500 hover:text-slate-700'}`}
+              onClick={() => setActiveTab(tabItem.id)}
             >
-              {t.label}
+              {t(tabItem.label)}
             </button>
           ))}
         </div>
@@ -305,12 +308,10 @@ export default function ApprovalsPage() {
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-600 cursor-pointer">
                   <input type="checkbox" checked={allSelected}
                     onChange={(e) => setSelectedIds(e.target.checked ? currentList.map(currentIdOf) : [])}
-                    className="rounded border-slate-300" />
-                  Select All
-                </label>
+                    className="rounded border-slate-300" />{t("Select All")}</label>
                 <button type="button" onClick={handleBulkApprove} disabled={selectedIds.length === 0 || bulkSubmitting}
                   className="rounded-2xl bg-[#1540A8] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40 hover:bg-[#12378F]">
-                  {bulkSubmitting ? 'Approving…' : `Bulk Approve${selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}`}
+                  {bulkSubmitting ? t("Approving…") : t("Bulk Approve{v}", { v: selectedIds.length > 0 ? ` (${selectedIds.length})` : '' })}
                 </button>
               </div>
             )}
@@ -318,9 +319,7 @@ export default function ApprovalsPage() {
 
           <div className="space-y-3">
             {currentList.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">
-                No pending {activeTab === 'ALLOCATION' ? 'allocation' : activeTab === 'BUDGET' ? 'budget' : 'staff registration'} requests.
-              </div>
+              <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">{t("No pending")}{" "}{activeTab === 'ALLOCATION' ? t("allocation") : activeTab === 'BUDGET' ? t("budget") : t("staff registration")}{" "}{t("requests.")}</div>
             ) : currentList.map((item) => {
               const id = currentIdOf(item);
               return (
@@ -332,23 +331,21 @@ export default function ApprovalsPage() {
                         className="mt-1.5 rounded border-slate-300" />
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                          {activeTab === 'ALLOCATION' ? 'Allocation Request' : activeTab === 'BUDGET' ? 'Budget Request' : 'Staff Registration'}
+                          {activeTab === 'ALLOCATION' ? t("Allocation Request") : activeTab === 'BUDGET' ? t("Budget Request") : t("Staff Registration")}
                         </p>
                         {activeTab === 'ALLOCATION' && (
                           <>
                             <h3 className="mt-1 text-lg font-semibold text-slate-900">{item.staff_name || item.staff_email || 'Staff'}</h3>
-                            <p className="mt-1 text-sm text-slate-500">
-                              {item.project_code} • {formatHours(item.hours_requested ?? item.hours_per_week)} hrs requested
-                              {item.hours_per_week != null && <span className="ml-1">({formatHours(item.hours_per_week)} hrs assigned)</span>}
+                            <p className="mt-1 text-sm text-slate-500">{t("{project_code} • {formatHours} hrs requested", { project_code: item.project_code, formatHours: formatHours(item.hours_requested ?? item.hours_per_week) })}{" "}{item.hours_per_week != null && <span className="ml-1">{t("({formatHours} hrs assigned)", { formatHours: formatHours(item.hours_per_week) })}</span>}
                             </p>
-                            {(item.reason || item.justification) && <p className="mt-1 text-xs text-slate-400">Reason: {item.reason || item.justification}</p>}
+                            {(item.reason || item.justification) && <p className="mt-1 text-xs text-slate-400">{t("Reason:")}{" "}{item.reason || item.justification}</p>}
                           </>
                         )}
                         {activeTab === 'BUDGET' && (
                           <>
                             <h3 className="mt-1 text-lg font-semibold text-slate-900">{item.project_name || item.project_code}</h3>
-                            <p className="mt-1 text-sm text-slate-500">{item.project_code} • {formatHours(item.requested_hours)} hrs requested</p>
-                            {item.requester_name && <p className="mt-1 text-xs text-slate-400">Requested by: {item.requester_name}</p>}
+                            <p className="mt-1 text-sm text-slate-500">{t("{project_code} • {formatHours} hrs requested", { project_code: item.project_code, formatHours: formatHours(item.requested_hours) })}</p>
+                            {item.requester_name && <p className="mt-1 text-xs text-slate-400">{t("Requested by: {requester_name}", { requester_name: item.requester_name })}</p>}
                           </>
                         )}
                         {activeTab === 'STAFF' && (
@@ -357,8 +354,7 @@ export default function ApprovalsPage() {
                             <p className="mt-1 text-sm text-slate-500">{item.email}</p>
                           </>
                         )}
-                        <p className="mt-1 text-xs text-slate-400">
-                          Submitted {item.created_at ? new Date(item.created_at).toLocaleDateString('en-SG', { timeZone: 'Asia/Singapore' }) : '—'}
+                        <p className="mt-1 text-xs text-slate-400">{t("Submitted")}{" "}{item.created_at ? new Date(item.created_at).toLocaleDateString(getLocale(), { timeZone: 'Asia/Singapore' }) : '—'}
                         </p>
                       </div>
                     </div>
@@ -366,11 +362,11 @@ export default function ApprovalsPage() {
                       <button
                         onClick={() => openReviewModal(activeTab, item, 'APPROVED')}
                         className="rounded-2xl bg-[#1540A8] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#12378F]"
-                      >Approve</button>
+                      >{t("Approve")}</button>
                       <button
                         onClick={() => openReviewModal(activeTab, item, 'REJECTED')}
                         className="rounded-2xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-red-400 hover:text-red-600"
-                      >Reject</button>
+                      >{t("Reject")}</button>
                     </div>
                   </div>
                 </div>
@@ -387,22 +383,22 @@ export default function ApprovalsPage() {
           <div className="flex flex-wrap items-center gap-3 mb-5 pb-5 border-b border-slate-100">
             <div className="flex gap-1.5">
               {[
-                { id: 'ALL', label: 'All' },
-                { id: 'ALLOCATION', label: 'Allocations' },
-                { id: 'BUDGET', label: 'Budget' },
-                { id: 'STAFF', label: 'Staff' },
+                { id: 'ALL', label: t("All") },
+                { id: 'ALLOCATION', label: t("Allocations") },
+                { id: 'BUDGET', label: t("Budget") },
+                { id: 'STAFF', label: t("Staff") },
               ].map((c) => (
                 <button key={c.id} type="button" onClick={() => setHistoryTypeFilter(c.id)}
                   className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
                     historyTypeFilter === c.id ? 'bg-[#1540A8] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}>
-                  {c.label}
+                  {t(c.label)}
                 </button>
               ))}
             </div>
             <input type="date" value={historyDateFrom} onChange={(e) => setHistoryDateFrom(e.target.value)}
               className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <span className="text-xs text-slate-400">to</span>
+            <span className="text-xs text-slate-400">{t("to")}</span>
             <input type="date" value={historyDateTo} onChange={(e) => setHistoryDateTo(e.target.value)}
               className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <div className="relative ml-auto">
@@ -410,36 +406,36 @@ export default function ApprovalsPage() {
                 <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
               <input type="text" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)}
-                placeholder="Search staff or project…"
+                placeholder={t("Search staff or project…")}
                 className="rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-1.5 text-sm text-slate-900 w-52 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
 
           {filteredHistory.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">No reviewed records match this filter.</div>
+            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-slate-500">{t("No reviewed records match this filter.")}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                   <tr>
-                    <th className="px-6 py-4">Event / Type</th>
-                    <th className="px-6 py-4">Description</th>
-                    <th className="px-6 py-4">Target / Project</th>
-                    <th className="px-6 py-4">Actor</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Date &amp; Time</th>
+                    <th className="px-6 py-4">{t("Event / Type")}</th>
+                    <th className="px-6 py-4">{t("Description")}</th>
+                    <th className="px-6 py-4">{t("Target / Project")}</th>
+                    <th className="px-6 py-4">{t("Actor")}</th>
+                    <th className="px-6 py-4">{t("Status")}</th>
+                    <th className="px-6 py-4">{t("Date & Time")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {filteredHistory.map((row) => (
                     <tr key={row.key} className="hover:bg-slate-50">
                       <td className="px-6 py-4"><EventBadge type={row.type} /></td>
-                      <td className="px-6 py-4 text-slate-700 max-w-[260px] truncate">{row.description}</td>
+                      <td className="px-6 py-4 text-slate-700 max-w-[260px] truncate">{t(row.description)}</td>
                       <td className="px-6 py-4 font-medium text-slate-700">{row.target}</td>
                       <td className="px-6 py-4 text-slate-700">{row.actor}</td>
                       <td className="px-6 py-4">{statusBadge(row.status)}</td>
                       <td className="px-6 py-4 text-xs text-slate-400">
-                        {row.date ? new Date(row.date).toLocaleString('en-SG', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Singapore' }) : '—'}
+                        {row.date ? new Date(row.date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Singapore' }) : '—'}
                       </td>
                     </tr>
                   ))}
@@ -456,25 +452,24 @@ export default function ApprovalsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
           <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
             <h2 className="text-xl font-semibold text-slate-900 mb-1">
-              {reviewModal.action === 'APPROVED' ? 'Approve' : 'Reject'}{' '}
-              {reviewModal.type === 'ALLOCATION' ? 'Allocation' : reviewModal.type === 'BUDGET' ? 'Budget Request' : 'Staff Registration'}
+              {reviewModal.action === 'APPROVED' ? t("Approve") : t("Reject")}{' '}
+              {reviewModal.type === 'ALLOCATION' ? t("Allocation") : reviewModal.type === 'BUDGET' ? t("Budget Request") : t("Staff Registration")}
             </h2>
             <p className="text-sm text-slate-500 mb-5">
-              {reviewModal.type === 'ALLOCATION' && <><strong>{reviewModal.item.staff_name || reviewModal.item.staff_email}</strong> — {reviewModal.item.project_code} • {formatHours(reviewModal.item.hours_requested ?? reviewModal.item.hours_per_week)} hrs</>}
-              {reviewModal.type === 'BUDGET' && <><strong>{reviewModal.item.project_code}</strong> — {reviewModal.item.project_name || reviewModal.item.project_code} • {formatHours(reviewModal.item.requested_hours)} hrs requested</>}
+              {reviewModal.type === 'ALLOCATION' && <><strong>{reviewModal.item.staff_name || reviewModal.item.staff_email}</strong>{" "}{t("— {project_code} • {formatHours} hrs", { project_code: reviewModal.item.project_code, formatHours: formatHours(reviewModal.item.hours_requested ?? reviewModal.item.hours_per_week) })}</>}
+              {reviewModal.type === 'BUDGET' && <><strong>{reviewModal.item.project_code}</strong> — {reviewModal.item.project_name || reviewModal.item.project_code}{" "}{t("• {formatHours} hrs requested", { formatHours: formatHours(reviewModal.item.requested_hours) })}</>}
               {reviewModal.type === 'STAFF' && <><strong>{reviewModal.item.full_name}</strong> — {reviewModal.item.email}</>}
             </p>
 
             {reviewModal.type !== 'STAFF' && (
               <div className="mb-5">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Remark {reviewModal.action === 'REJECTED' ? <span className="text-red-500">*</span> : <span className="font-normal text-slate-400">(optional)</span>}
+                <label className="block text-sm font-semibold text-slate-700 mb-2">{t("Remark")}{" "}{reviewModal.action === 'REJECTED' ? <span className="text-red-500">*</span> : <span className="font-normal text-slate-400">{t("(optional)")}</span>}
                 </label>
                 <textarea
                   rows={3}
                   value={reviewRemark}
                   onChange={(e) => setReviewRemark(e.target.value)}
-                  placeholder={reviewModal.action === 'REJECTED' ? 'Explain why this is being rejected…' : 'Add a note…'}
+                  placeholder={reviewModal.action === 'REJECTED' ? t("Explain why this is being rejected…") : t("Add a note…")}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {reviewError && <p className="mt-2 text-sm font-medium text-red-500">{reviewError}</p>}
@@ -489,13 +484,13 @@ export default function ApprovalsPage() {
               <button
                 onClick={() => setReviewModal(null)}
                 className="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700"
-              >Cancel</button>
+              >{t("Cancel")}</button>
               <button
                 onClick={submitModalReview}
                 disabled={submitting}
                 className={`rounded-2xl px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60 ${reviewModal.action === 'APPROVED' ? 'bg-[#1540A8] hover:bg-[#12378F]' : 'bg-red-600 hover:bg-red-700'}`}
               >
-                {submitting ? 'Submitting…' : reviewModal.action === 'APPROVED' ? 'Confirm Approve' : 'Confirm Reject'}
+                {submitting ? t("Submitting…") : reviewModal.action === 'APPROVED' ? t("Confirm Approve") : t("Confirm Reject")}
               </button>
             </div>
           </div>
@@ -504,7 +499,7 @@ export default function ApprovalsPage() {
 
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-4 rounded-2xl bg-slate-900 px-5 py-4 text-sm font-medium text-white shadow-2xl">
-          <span>{toast.message}</span>
+          <span>{t(toast.message)}</span>
           <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white">&times;</button>
         </div>
       )}

@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import ProjectCards from './ProjectCards';
+import { useT } from '../i18n/LanguageProvider';
 
 export default function ProjectCodesPage() {
+  const { t } = useT();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   const [sessionUser, setSessionUser] = useState(null);
@@ -42,14 +44,14 @@ export default function ProjectCodesPage() {
     })();
   }, [backendBaseUrl, authChecked]);
 
-  if (!authChecked) return <div className="p-8 text-slate-500">Loading...</div>;
+  if (!authChecked) return <div className="p-8 text-slate-500">{t("Loading...")}</div>;
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="mt-2 text-4xl font-semibold text-slate-950">Projects</h1>
-        <p className="mt-1 text-sm text-slate-500">Create, edit and manage all project codes.</p>
+        <h1 className="mt-2 text-4xl font-semibold text-slate-950">{t("Projects")}</h1>
+        <p className="mt-1 text-sm text-slate-500">{t("Create, edit and manage all project codes.")}</p>
       </div>
 
       <ProjectCards
