@@ -3,6 +3,22 @@
 // `version` numbers the updates from the oldest (1.0) upward; give a new entry the next number.
 export const WHATS_NEW = [
   {
+    id: 5,
+    date: '13 Oct 2026',
+    version: '1.4',
+    title: 'A fresh new look',
+    summary: 'Cleaner design, a clearer Dashboard and a bell that counts what is waiting',
+    chips: ['New Dashboard look', 'Live notifications', 'Cleaner calendar'],
+    body: 'The portal has a cleaner design, the Dashboard shows what is waiting for you at a glance, and the bell now counts your pending items.',
+    points: [
+      { icon: "grid", lead: "Dashboard", text: "greets you with how many items are waiting, with cards for allocations, budget requests and staff registrations" },
+      { icon: "bell", lead: "The bell", text: "shows how many items are waiting and opens the right Approvals tab" },
+      { icon: "calendar", lead: "The Calendar", text: "has a cleaner month view" },
+      { icon: "folder", lead: "Team", text: "shows the projects you are in charge of as tidy cards" },
+      { icon: "window", lead: "Profile and Log out", text: "are now at the bottom of the sidebar" },
+    ],
+  },
+  {
     id: 4,
     date: '12 Oct 2026',
     version: '1.3',
