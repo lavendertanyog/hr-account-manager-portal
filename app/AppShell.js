@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import SidebarClient, { PAGE_BG } from './SidebarClient';
 import UpdateNotice from './UpdateNotice';
 import TopBar from './TopBar';
+import WalkthroughTour from './WalkthroughTour';
 
 const SIDEBAR_PATH_PREFIXES = ['/dashboard', '/my-projects', '/team', '/approvals', '/progress', '/reports', '/calendar', '/profile', '/whats-new'];
 const MOBILE_MEDIA_QUERY = '(max-width: 860px)';
@@ -66,6 +67,7 @@ export default function AppShell({ children }) {
         {sidebarOpen && <SidebarClient isDrawer onClose={() => setSidebarOpen(false)} />}
         <UpdateNotice sessionKey="am_portal_user" />
         <main ref={scrollRef}>
+          <WalkthroughTour />
           <TopBar onMenuClick={() => setSidebarOpen(true)} menuLabel="Open menu" />
           {children}
         </main>
@@ -91,6 +93,7 @@ export default function AppShell({ children }) {
             scrollbar) from the card's rounded corners, so the scrollbar never sits on the curve. */}
         <div className="flex-1 flex flex-col" style={{ minHeight: 0, padding: '16px 0' }}>
           <div ref={scrollRef} className="flex-1 overflow-y-auto page-scrollbar" style={{ paddingLeft: 12, paddingRight: 8 }}>
+            <WalkthroughTour />
             <TopBar onMenuClick={toggleCollapsed} menuLabel={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} />
             {children}
           </div>
