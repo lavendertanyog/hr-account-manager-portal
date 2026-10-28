@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import ComingUp from '../ComingUp';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hr-backend-qjww.onrender.com';
 
@@ -335,6 +336,10 @@ export default function AccountManagerDashboard() {
       {error && (
         <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
+
+      <div className="mb-8">
+        <ComingUp user={user} />
+      </div>
 
       {/* Approvals panel */}
       <section id="am-approvals-panel" className="flex scroll-mt-24 flex-col gap-4">
