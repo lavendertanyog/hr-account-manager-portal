@@ -2,28 +2,35 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
+import { DEFAULT_TIME_ZONE, DEFAULT_COUNTRY, OFFICE_COUNTRIES, timeZoneForCountry, zonedWallClock } from '../officeTime';
 
-function formatCsvDate(dt) {
+// Attendance times are read in the staff member's own office time zone (set by HR on the Users
+// page): a 9:00 AM clock-in in Colombo counts as 9:00 AM. tzOf(row) gives a row's zone.
+function tzOf(row) {
+  return timeZoneForCountry(row?.home_office_country);
+}
+
+function formatCsvDate(dt, timeZone = DEFAULT_TIME_ZONE) {
   if (!dt) return '';
-  return new Date(dt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Singapore' });
+  return new Date(dt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone });
 }
 
-function formatCsvTime(dt) {
+function formatCsvTime(dt, timeZone = DEFAULT_TIME_ZONE) {
   if (!dt) return '';
-  return new Date(dt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Singapore' });
+  return new Date(dt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone });
 }
 
-// Same SGT-shift trick used on the Attendance page — never read local getDate()/getHours(),
-// which only give the right answer if the VIEWER's device happens to be set to SGT.
-function toSGT(dateInput) {
-  return new Date(new Date(dateInput).getTime() + 8 * 60 * 60 * 1000);
+// Same office-time shift used on the Attendance page — never read local getDate()/getHours(),
+// which only give the right answer if the VIEWER's device happens to be in that time zone.
+function toOfficeTime(dateInput, timeZone) {
+  return zonedWallClock(dateInput, timeZone);
 }
-function sgtDateStr(dt) {
-  const d = toSGT(dt);
+function officeDateStr(dt, timeZone = DEFAULT_TIME_ZONE) {
+  const d = toOfficeTime(dt, timeZone);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
-function sgtMinutes(dt) {
-  const d = toSGT(dt);
+function officeMinutes(dt, timeZone = DEFAULT_TIME_ZONE) {
+  const d = toOfficeTime(dt, timeZone);
   return d.getUTCHours() * 60 + d.getUTCMinutes();
 }
 function minutesToLabel(mins) {
@@ -37,11 +44,11 @@ function minutesToLabel(mins) {
 
 function isOvernightShift(row) {
   if (!row.clock_in_time) return false;
-  const inHour = toSGT(row.clock_in_time).getUTCHours();
+  const inHour = toOfficeTime(row.clock_in_time, tzOf(row)).getUTCHours();
   if (inHour >= 22 || inHour < 6) return true;
   if (row.clock_out_time) {
-    const inDate = toSGT(row.clock_in_time);
-    const outDate = toSGT(row.clock_out_time);
+    const inDate = toOfficeTime(row.clock_in_time, tzOf(row));
+    const outDate = toOfficeTime(row.clock_out_time, tzOf(row));
     return outDate.getUTCDate() !== inDate.getUTCDate() || outDate.getUTCMonth() !== inDate.getUTCMonth();
   }
   return false;
@@ -156,7 +163,7 @@ function ClockInChart({ sessions }) {
   const points = sessions
     .filter((s) => s.clock_in_time)
     .sort((a, b) => new Date(a.clock_in_time) - new Date(b.clock_in_time))
-    .map((s) => ({ minutes: sgtMinutes(s.clock_in_time), dateLabel: formatCsvDate(s.clock_in_time).slice(0, 5) }));
+    .map((s) => ({ minutes: officeMinutes(s.clock_in_time, tzOf(s)), dateLabel: formatCsvDate(s.clock_in_time, tzOf(s)).slice(0, 5) }));
 
   if (points.length === 0) {
     return <p className="text-sm text-slate-400 italic">No clock-in times in this period.</p>;
@@ -208,7 +215,7 @@ function HoursBarChart({ sessions }) {
   const byDate = new Map();
   for (const s of sessions) {
     if (!s.clock_in_time) continue;
-    const d = sgtDateStr(s.clock_in_time);
+    const d = officeDateStr(s.clock_in_time, tzOf(s));
     const h = Number(s.daily_worktime_hours) || 0;
     byDate.set(d, (byDate.get(d) || 0) + h);
   }
@@ -287,7 +294,7 @@ function SessionTimelineChart({ sessions, startStr, endStr }) {
 
   const byDay = new Map();
   withClockIn.forEach((s) => {
-    const day = sgtDateStr(s.clock_in_time);
+    const day = officeDateStr(s.clock_in_time, tzOf(s));
     if (!byDay.has(day)) byDay.set(day, []);
     byDay.get(day).push(s);
   });
@@ -342,9 +349,9 @@ function SessionTimelineChart({ sessions, startStr, endStr }) {
             <line x1={plotL} y1={y + rowH} x2={plotR} y2={y + rowH} stroke="#F1F3F8" strokeWidth="1" />
             <text x={plotL - 10} y={y + rowH / 2 + 4} fontSize="11" fontWeight="500" fill="#5B6478" textAnchor="end">{label}</text>
             {byDay.get(day).map((s) => {
-              const startMin = sgtMinutes(s.clock_in_time);
-              const rawEndMin = s.clock_out_time ? sgtMinutes(s.clock_out_time) : null;
-              const endMin = rawEndMin != null && sgtDateStr(s.clock_out_time) === day && rawEndMin > startMin ? rawEndMin : 1440;
+              const startMin = officeMinutes(s.clock_in_time, tzOf(s));
+              const rawEndMin = s.clock_out_time ? officeMinutes(s.clock_out_time, tzOf(s)) : null;
+              const endMin = rawEndMin != null && officeDateStr(s.clock_out_time, tzOf(s)) === day && rawEndMin > startMin ? rawEndMin : 1440;
               const span = endMin - startMin;
               const allocations = Array.isArray(s.allocations) ? s.allocations : [];
               const segs = allocations.map((a) => ({ code: a.project_code || null, minutes: Number(a.accumulated_hours || 0) * 60 }));
@@ -371,8 +378,8 @@ function SessionTimelineChart({ sessions, startStr, endStr }) {
 function computeReportStats(sessions) {
   const totalHours = sessions.reduce((sum, s) => sum + (Number(s.daily_worktime_hours) || 0), 0);
   const otHours = sessions.reduce((sum, s) => sum + (Number(s.ot_hours_accrued) || 0), 0);
-  const daysWorked = new Set(sessions.filter((s) => s.clock_in_time).map((s) => sgtDateStr(s.clock_in_time))).size;
-  const clockInMinutes = sessions.filter((s) => s.clock_in_time).map((s) => sgtMinutes(s.clock_in_time));
+  const daysWorked = new Set(sessions.filter((s) => s.clock_in_time).map((s) => officeDateStr(s.clock_in_time, tzOf(s)))).size;
+  const clockInMinutes = sessions.filter((s) => s.clock_in_time).map((s) => officeMinutes(s.clock_in_time, tzOf(s)));
   const avgClockInMinutes = clockInMinutes.length > 0 ? clockInMinutes.reduce((a, b) => a + b, 0) / clockInMinutes.length : null;
   const avgClockIn = avgClockInMinutes != null ? minutesToLabel(avgClockInMinutes) : '—';
   const projectCodes = new Set();
@@ -429,9 +436,9 @@ function consolidateMicroSessions(sorted) {
     const isGeneralOnly = allocations.length > 0 ? allocations.every((a) => !a.project_code) : !s.project_code;
     const hours = Number(s.daily_worktime_hours) || 0;
     if (isGeneralOnly && s.clock_out_time && hours > 0 && hours < MICRO_SESSION_HOURS) {
-      const dateKey = sgtDateStr(s.clock_in_time);
+      const dateKey = officeDateStr(s.clock_in_time, tzOf(s));
       if (!microByDate.has(dateKey)) {
-        microByDate.set(dateKey, { dateKey, firstClockIn: s.clock_in_time, hours: 0, count: 0, descriptions: [], remarks: [] });
+        microByDate.set(dateKey, { dateKey, home_office_country: s.home_office_country, firstClockIn: s.clock_in_time, hours: 0, count: 0, descriptions: [], remarks: [] });
       }
       const bucket = microByDate.get(dateKey);
       bucket.hours += hours;
@@ -448,6 +455,7 @@ function consolidateMicroSessions(sorted) {
     kept.push({
       attendance_id: `consolidated-${bucket.dateKey}`,
       __consolidatedCount: bucket.count,
+      home_office_country: bucket.home_office_country,
       clock_in_time: bucket.firstClockIn,
       clock_out_time: bucket.firstClockIn,
       daily_worktime_hours: bucket.hours,
@@ -504,18 +512,18 @@ function ActivityLogTable({ sorted }) {
                 </td>
                 {consolidatedCount ? (
                   <td className={`px-4 py-2.5 text-slate-500 italic ${rowBg}`} colSpan={2}>
-                    {formatCsvDate(s.clock_in_time)} — {consolidatedCount} admin check-ins, consolidated
+                    {formatCsvDate(s.clock_in_time, tzOf(s))} — {consolidatedCount} admin check-ins, consolidated
                   </td>
                 ) : (
                   <>
                     <td className={`px-4 py-2.5 whitespace-nowrap ${rowBg}`}>
-                      <div>{formatCsvDate(s.clock_in_time)}</div>
-                      <div className="font-mono text-xs text-slate-500">{formatCsvTime(s.clock_in_time)}</div>
+                      <div>{formatCsvDate(s.clock_in_time, tzOf(s))}</div>
+                      <div className="font-mono text-xs text-slate-500">{formatCsvTime(s.clock_in_time, tzOf(s))}</div>
                     </td>
                     {s.clock_out_time ? (
                       <td className={`px-4 py-2.5 whitespace-nowrap ${rowBg}`}>
-                        <div>{formatCsvDate(s.clock_out_time)}</div>
-                        <div className="font-mono text-xs text-slate-500">{formatCsvTime(s.clock_out_time)}</div>
+                        <div>{formatCsvDate(s.clock_out_time, tzOf(s))}</div>
+                        <div className="font-mono text-xs text-slate-500">{formatCsvTime(s.clock_out_time, tzOf(s))}</div>
                       </td>
                     ) : (
                       <td className={`px-4 py-2.5 font-semibold text-green-600 ${rowBg}`}>Ongoing</td>
@@ -818,7 +826,7 @@ function SdCalendar({ weeks, showWeekTotals, compact }) {
 function SupportingDetailSection({ sessions, startStr, endStr, holidayDates = [], leaveDates = [] }) {
   const byDay = new Map(); // yyyy-mm-dd (SGT, day the shift started) -> { hours, ot, count, overnight[] }
   sessions.filter((s) => s.clock_in_time).forEach((s) => {
-    const key = sgtDateStr(s.clock_in_time);
+    const key = officeDateStr(s.clock_in_time, tzOf(s));
     const day = byDay.get(key) || { hours: 0, ot: 0, count: 0, overnight: [] };
     day.hours += Number(s.daily_worktime_hours) || 0;
     day.ot += Number(s.ot_hours_accrued) || 0;
@@ -835,7 +843,7 @@ function SupportingDetailSection({ sessions, startStr, endStr, holidayDates = []
   // Working days = Mon-Fri in the period, up to today, less public holidays and approved leave.
   const holidaySet = new Set(holidayDates);
   const leaveSet = new Set(leaveDates);
-  const todayStr = sgtDateStr(new Date());
+  const todayStr = officeDateStr(new Date());
   const lastCounted = endStr < todayStr ? endStr : todayStr;
   let workingDays = 0, workingDaysLogged = 0;
   for (let d = parseDateStr(startStr); toDateStr(d) <= lastCounted; d = addDays(d, 1)) {
@@ -944,7 +952,7 @@ function SupportingDetailSection({ sessions, startStr, endStr, holidayDates = []
                   </div>
                   <p className="text-xs text-[#5B6478]">
                     {d.hours.toFixed(2)}h across {d.count} session{d.count === 1 ? '' : 's'}
-                    {d.overnight.map((s) => ` · ${formatCsvTime(s.clock_in_time)} to ${s.clock_out_time ? formatCsvTime(s.clock_out_time) : 'still active'}`).join('')}
+                    {d.overnight.map((s) => ` · ${formatCsvTime(s.clock_in_time, tzOf(s))} to ${s.clock_out_time ? formatCsvTime(s.clock_out_time, tzOf(s)) : 'still active'}`).join('')}
                     {d.overnight.length > 0 && (d.overnight.some((s) => s.remark)
                       ? ` · Note: ${d.overnight.filter((s) => s.remark).map((s) => s.remark).join('; ')}`
                       : ' · No note on file')}
@@ -1286,7 +1294,8 @@ export default function ReportsPage() {
   const [rows, setRows] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
-  const [holidayDates, setHolidayDates] = useState([]);
+  // Each country's holiday dates, so every employee's report skips their own office's holidays.
+  const [holidayDatesByCountry, setHolidayDatesByCountry] = useState({});
   const [budgetByUser, setBudgetByUser] = useState({}); // user_id -> budget-usage rows, fetched lazily per employee in scope
   const [loading, setLoading] = useState(true);
   const [requesterId, setRequesterId] = useState('');
@@ -1327,9 +1336,12 @@ export default function ReportsPage() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${backendBaseUrl}/api/v1/public-holidays`)
-      .then((res) => setHolidayDates((res.data.data || []).map((h) => String(h.holiday_date).slice(0, 10))))
-      .catch(() => setHolidayDates([]));
+    // Malaysian state-only holidays are left out: we don't record which state someone works in,
+    // so only nationwide holidays count as days off.
+    Promise.all(OFFICE_COUNTRIES.map((c) => axios.get(`${backendBaseUrl}/api/v1/public-holidays`, { params: { country: c.code } })
+      .then((res) => [c.code, (res.data.data || []).filter((h) => !(h.states && h.states.length)).map((h) => String(h.holiday_date).slice(0, 10))])
+      .catch(() => [c.code, []])))
+      .then((entries) => setHolidayDatesByCountry(Object.fromEntries(entries)));
   }, [backendBaseUrl]);
 
   useEffect(() => {
@@ -1395,7 +1407,7 @@ export default function ReportsPage() {
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
       if (!r.clock_in_time) return false;
-      const d = sgtDateStr(r.clock_in_time);
+      const d = officeDateStr(r.clock_in_time, tzOf(r));
       if (d < periodRange.startStr || d > periodRange.endStr) return false;
       if (employeeFilter !== 'all' && r.user_id !== employeeFilter) return false;
       return true;
@@ -1454,7 +1466,7 @@ export default function ReportsPage() {
     const priorRange = getPeriodRange(periodType, getPreviousAnchor(periodType, anchorDate));
     for (const r of rows) {
       if (!r.clock_in_time) continue;
-      const d = sgtDateStr(r.clock_in_time);
+      const d = officeDateStr(r.clock_in_time, tzOf(r));
       if (d < priorRange.startStr || d > priorRange.endStr) continue;
       totals.set(r.user_id, (totals.get(r.user_id) || 0) + (Number(r.daily_worktime_hours) || 0));
     }
@@ -1883,7 +1895,7 @@ export default function ReportsPage() {
             daysInPeriod={daysInPeriod}
             leaveNote={getLeaveNote(leaveRequests, emp.user_id, periodRange.startStr, periodRange.endStr)}
             budgetRows={budgetByUser[emp.user_id] || []}
-            holidayDates={holidayDates}
+            holidayDates={holidayDatesByCountry[String(emp.sessions?.[0]?.home_office_country || DEFAULT_COUNTRY).toUpperCase()] || []}
             leaveDates={getApprovedLeaveDates(leaveRequests, emp.user_id)}
           />
         ))}
